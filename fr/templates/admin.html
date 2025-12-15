@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Attendance Admin Panel</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&display=swap');
+        :root {
+            --bg: #e8edf5;
+            --panel: #ffffff;
+            --stroke: #e5e9f0;
+            --primary: #2563ff;
+            --accent: #16a34a;
+            --muted: #65748b;
+            --text: #0f172a;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 34px 18px;
+            font-family: 'Manrope', 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at 20% 20%, #f5f7fb, #e5ebf7 48%, #e8eefc);
+            color: var(--text);
+        }
+        .shell { max-width: 1100px; margin: 0 auto; }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--stroke);
+            border-radius: 18px;
+            padding: 26px 32px;
+            box-shadow: 0 18px 55px rgba(15, 23, 42, 0.08);
+        }
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 10px;
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #1f2937;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        h1 {
+            margin: 6px 0;
+            font-size: 30px;
+            letter-spacing: -0.02em;
+        }
+        .sub { margin: 0 0 16px 0; color: var(--muted); }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            margin: 8px 0 16px 0;
+        }
+        select {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--stroke);
+            background: #f9fbff;
+            font-size: 14px;
+            min-width: 180px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 11px 14px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 14px;
+            transition: transform 100ms ease, box-shadow 140ms ease;
+        }
+        .btn.primary { background: var(--primary); color: #fff; box-shadow: 0 10px 24px rgba(37, 99, 255, 0.18); text-decoration: none; }
+        .btn.accent { background: var(--accent); color: #fff; box-shadow: 0 10px 24px rgba(22, 163, 74, 0.18); text-decoration: none; }
+        .table-wrap {
+            background: #f9fbff;
+            border: 1px solid var(--stroke);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 14px; text-align: left; }
+        th {
+            background: linear-gradient(90deg, #e8efff, #f3f6ff);
+            color: #1e3a8a;
+            font-size: 13px;
+            letter-spacing: 0.02em;
+        }
+        td { border-top: 1px solid var(--stroke); font-weight: 600; font-size: 14px; color: #111827; }
+        tbody tr:nth-child(2n) td { background: #fdfefe; }
+        .empty {
+            padding: 20px;
+            text-align: center;
+            color: var(--muted);
+        }
+    </style>
+</head>
+<body>
+
+<div class="shell">
+    <div class="panel">
+        <div class="nav">
+            <a href="/" class="back-btn">&larr; Back to Scanner</a>
+            <a href="/download_attendance/" class="btn accent">Download Attendance</a>
+        </div>
+
+        <h1>Attendance Admin Panel</h1>
+        <p class="sub">Filter by office or download the latest attendance CSV.</p>
+
+        <div class="controls">
+            <form method="GET">
+                <select name="office" onchange="this.form.submit()">
+                    <option value="">All Offices</option>
+                    {% for o in offices %}
+                        <option value="{{ o }}" {% if selected == o %}selected{% endif %}>{{ o }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            <a href="/admin-panel/" class="btn primary">Open Admin Dashboard</a>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Name</th>
+                        <th>Office</th>
+                        <th>Period</th>
+                        <th>Confidence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in logs %}
+                        <tr>
+                            <td>{{ row.timestamp }}</td>
+                            <td>{{ row.name }}</td>
+                            <td>{{ row.office }}</td>
+                            <td>{{ row.period }}</td>
+                            <td>{{ row.confidence }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="5" class="empty">No attendance available.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

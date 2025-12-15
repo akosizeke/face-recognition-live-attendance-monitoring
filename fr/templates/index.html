@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Face Recognition System</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&display=swap');
+    :root{
+      --bg: #e8edf5;
+      --panel: #ffffff;
+      --stroke: #e5e9f0;
+      --primary: #2563ff;
+      --accent: #0ea5e9;
+      --success: #22c55e;
+      --warning: #f97316;
+      --ink: #0f172a;
+      --muted: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 20% 20%, #f5f7fb, #e5ebf7 48%, #e8eefc);
+      color: var(--ink);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 18px;
+      font-family: 'Manrope', 'Segoe UI', sans-serif;
+    }
+    .container {
+      background: var(--panel);
+      width: 1040px;
+      padding: 26px 32px;
+      border-radius: 18px;
+      box-shadow: 0 18px 55px rgba(15, 23, 42, 0.08);
+      border: 1px solid var(--stroke);
+      animation: fadeIn 0.45s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: -0.02em;
+      color: #0b3b73;
+    }
+    .badge {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #ecfdf3;
+      color: var(--success);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+    }
+    .sub {
+      margin: 0 0 14px 0;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    #videoWrap {
+      position: relative;
+      width: 700px;
+      margin: 18px auto;
+      background: #0b2237;
+      border-radius: 16px;
+      padding: 10px;
+      box-shadow: 0 12px 30px rgba(2,6,23,0.15);
+      border: 1px solid var(--stroke);
+    }
+    video {
+      width: 100%;
+      height: 480px;
+      border-radius: 12px;
+      background: #000;
+      object-fit: cover;
+      display: block;
+    }
+    canvas.overlay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      width: calc(100% - 20px);
+      height: 480px;
+      pointer-events: none;
+      border-radius: 12px;
+      background: transparent;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    label { font-weight: 600; color: var(--muted); font-size: 13px; display: block; margin-bottom: 6px; }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 10px;
+      background: #f9fbff;
+      color: var(--ink);
+      font-size: 14px;
+      outline: none;
+      transition: box-shadow .15s, border-color .15s;
+    }
+    input::placeholder { color: var(--muted); }
+    input:focus, select:focus{
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 255, 0.12);
+    }
+    .btn {
+      padding: 11px 14px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      color: white;
+      font-weight: 700;
+      box-shadow: 0 10px 24px rgba(2,6,23,0.12);
+      transition: transform .08s ease, box-shadow .12s ease;
+      width: 100%;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.primary { background: var(--primary); }
+    .btn.success { background: var(--success); }
+    .btn.accent { background: var(--accent); }
+    .btn.live { background: #6f42c1; }
+    .btn.warn { background: var(--warning); }
+    .btn.ghost { background: #f4f6fb; color:#1f2937; box-shadow:none; border:1px solid #e6e9ee; }
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    #log {
+      background: #f9fbff;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #e6eef9;
+      color: #0b2237;
+      margin-top: 16px;
+    }
+    .admin-row {
+      margin-top: 8px;
+      display: flex;
+      justify-content: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    @media (max-width:980px){
+      .container { width: 100%; padding:18px; }
+      #videoWrap { width:100%; }
+      video, canvas.overlay { height:auto; aspect-ratio: 4/3; }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>Face Recognition System</h1>
+      <p class="sub">Enroll, train, and monitor attendance with live recognition.</p>
+    </div>
+    <span class="badge">Live</span>
+  </header>
+
+  <div id="videoWrap">
+    <video id="cam" autoplay playsinline></video>
+    <canvas id="overlay" class="overlay"></canvas>
+  </div>
+
+  <div class="controls">
+    <div>
+      <label for="label">Employee Name</label>
+      <input id="label" placeholder="Employee Name">
+    </div>
+    <div>
+      <label for="office">Office</label>
+      <input id="office" placeholder="Office (e.g., IT)">
+    </div>
+    <div>
+      <label for="count">Samples</label>
+      <input id="count" type="number" value="5" min="1" max="20">
+    </div>
+    <div>
+      <label for="threshold">Threshold</label>
+      <input id="threshold" type="number" value="80">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="autoEnrollBtn" class="btn primary">Auto-Enroll</button>
+    <button id="trainBtn" class="btn success">Train Model</button>
+    <button id="toggleLiveBtn" class="btn live">Start Live</button>
+    <button id="downloadAttendance" class="btn warn">Download Attendance</button>
+  </div>
+
+  <div class="admin-row">
+    <button onclick="window.location.href='/admin-panel/'" class="btn ghost" style="width:auto;">
+      Open Admin Panel
+    </button>
+  </div>
+
+  <div id="log">Ready.</div>
+</div>
+
+
+<script>
+const cam = document.getElementById('cam');
+const overlay = document.getElementById('overlay');
+const logEl = document.getElementById('log');
+let liveInterval = null;
+let busy = false;
+
+async function startCamera(){
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({video:true});
+    cam.srcObject = stream;
+    await cam.play();
+    syncOverlay();
+  } catch (e) {
+    log('Camera error: ' + e);
+    console.error(e);
+  }
+}
+
+function syncOverlay() {
+  const rect = cam.getBoundingClientRect();
+  overlay.width = cam.videoWidth || rect.width || 640;
+  overlay.height = cam.videoHeight || rect.height || 480;
+  overlay.style.width = cam.offsetWidth + "px";
+  overlay.style.height = cam.offsetHeight + "px";
+}
+
+cam.addEventListener('loadedmetadata', syncOverlay);
+window.addEventListener('resize', syncOverlay);
+
+function log(msg){
+  logEl.textContent = typeof msg === "string" ? msg : JSON.stringify(msg,null,2);
+}
+
+function snapshot(){
+  const c = document.createElement('canvas');
+  c.width = cam.videoWidth || cam.offsetWidth;
+  c.height = cam.videoHeight || cam.offsetHeight;
+  c.getContext('2d').drawImage(cam,0,0,c.width,c.height);
+  return c.toDataURL("image/jpeg");
+}
+
+async function postJSON(url, data){
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(data)
+  });
+  return res.json();
+}
+
+document.getElementById('autoEnrollBtn').addEventListener('click', async () => {
+  const label = document.getElementById('label').value.trim();
+  const office = document.getElementById('office').value.trim();
+  const count = parseInt(document.getElementById('count').value || 5, 10);
+  if (!label) return alert("Enter name");
+  if (!office) return alert("Enter office");
+
+  for (let i=0;i<count;i++){
+    const img = snapshot();
+    const res = await postJSON("/enroll/", {label, office, image: img});
+    log(`Saved ${i+1}/${count}: ${JSON.stringify(res)}`);
+    await new Promise(r=>setTimeout(r,500));
+  }
+  log("Auto enroll done - train model next!");
+});
+
+document.getElementById('trainBtn').addEventListener('click', async () => {
+  log("Training...");
+  log(await postJSON("/train/", {}));
+});
+
+document.getElementById('downloadAttendance').addEventListener('click', () => {
+  window.location.href = "/download_attendance/";
+});
+
+document.getElementById('toggleLiveBtn').addEventListener('click', () => {
+  if (liveInterval){ stopLive(); }
+  else { startLive(); }
+});
+
+function startLive(){
+  document.getElementById('toggleLiveBtn').textContent = "Stop Live";
+  liveInterval = setInterval(liveTick, 800);
+}
+
+function stopLive(){
+  clearInterval(liveInterval);
+  liveInterval = null;
+  document.getElementById('toggleLiveBtn').textContent = "Start Live";
+  clearOverlay();
+}
+
+async function liveTick(){
+  if (busy) return;
+  busy = true;
+  const img = snapshot();
+  const res = await postJSON("/recognize/", {image: img});
+  drawResults(res.results || []);
+  busy = false;
+}
+
+function clearOverlay(){
+  const ctx = overlay.getContext('2d');
+  ctx.clearRect(0,0,overlay.width,overlay.height);
+}
+
+function drawResults(results){
+  const ctx = overlay.getContext('2d');
+  ctx.clearRect(0,0,overlay.width,overlay.height);
+  ctx.lineWidth = 2;
+  ctx.font = "16px Manrope, Segoe UI";
+
+  results.forEach(r => {
+    const [x,y,w,h] = r.bbox;
+    ctx.strokeStyle = r.matched ? "#22c55e" : "#f97316";
+    ctx.strokeRect(x,y,w,h);
+
+    const text = `${r.name} (${r.confidence.toFixed(1)})`;
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    const tw = ctx.measureText(text).width;
+    ctx.fillRect(x, y-26, tw + 10, 22);
+    ctx.fillStyle = "white";
+    ctx.fillText(text, x+5, y-10);
+  });
+}
+
+startCamera();
+</script>
+
+</body>
+</html>

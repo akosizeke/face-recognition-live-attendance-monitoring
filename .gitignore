@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+
+# Environment folders
+env/
+venv/
+ENV/
+*.env
+
+# VS Code
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Admin - Logs</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&display=swap');
+        :root {
+            --bg: #e8edf5;
+            --panel: #ffffff;
+            --stroke: #e5e9f0;
+            --primary: #2563ff;
+            --muted: #65748b;
+            --text: #0f172a;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 34px 18px;
+            font-family: 'Manrope', 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at 20% 20%, #f5f7fb, #e5ebf7 48%, #e8eefc);
+            color: var(--text);
+        }
+        .shell { max-width: 980px; margin: 0 auto; }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--stroke);
+            border-radius: 18px;
+            padding: 26px 32px;
+            box-shadow: 0 18px 55px rgba(15, 23, 42, 0.08);
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #1f2937;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            margin-bottom: 12px;
+        }
+        h1 { margin: 6px 0; font-size: 28px; letter-spacing: -0.02em; }
+        .sub { margin: 0 0 16px 0; color: var(--muted); }
+        label { font-weight: 600; color: var(--muted); display: block; margin-bottom: 6px; }
+        input[type="date"] {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--stroke);
+            background: #f9fbff;
+            font-size: 14px;
+            transition: border-color 120ms ease, box-shadow 120ms ease;
+        }
+        input[type="date"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 255, 0.1);
+        }
+        .table-wrap {
+            margin-top: 14px;
+            background: #f9fbff;
+            border: 1px solid var(--stroke);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 14px; text-align: left; }
+        th {
+            background: linear-gradient(90deg, #e8efff, #f3f6ff);
+            color: #1e3a8a;
+            font-size: 13px;
+            letter-spacing: 0.02em;
+        }
+        td { border-top: 1px solid var(--stroke); font-weight: 600; font-size: 14px; color: #111827; }
+        tbody tr:nth-child(2n) td { background: #fdfefe; }
+        .empty { padding: 20px; text-align: center; color: var(--muted); }
+    </style>
+</head>
+<body>
+
+<div class="shell">
+    <div class="panel">
+        <a href="/admin-panel/{{ office }}/" class="back-btn">&larr; Back to Employees</a>
+        <h1>Logs for {{ employee }} ({{ office }})</h1>
+        <p class="sub">Filter by date to focus on a single day.</p>
+
+        <form method="GET">
+            <label for="date">Filter by Date</label>
+            <input id="date" type="date" name="date" value="{{ date_filter }}" onchange="this.form.submit()">
+        </form>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Period</th>
+                        <th>Confidence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in logs %}
+                        <tr>
+                            <td>{{ row.timestamp }}</td>
+                            <td>{{ row.period }}</td>
+                            <td>{{ row.confidence }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="empty">No logs found.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

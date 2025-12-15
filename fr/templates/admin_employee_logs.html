@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{ employee }} Logs</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&display=swap');
+        :root {
+            --bg: #e8edf5;
+            --panel: #ffffff;
+            --stroke: #e5e9f0;
+            --primary: #2563ff;
+            --primary-soft: #e8efff;
+            --success: #22c55e;
+            --warning: #f97316;
+            --muted: #65748b;
+            --text: #0f172a;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 34px 18px;
+            font-family: 'Manrope', 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at 20% 20%, #f5f7fb, #e5ebf7 48%, #e8eefc);
+            color: var(--text);
+        }
+        .shell { max-width: 1100px; margin: 0 auto; }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--stroke);
+            border-radius: 18px;
+            padding: 26px 32px;
+            box-shadow: 0 18px 55px rgba(15, 23, 42, 0.08);
+        }
+        .nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            margin-bottom: 10px;
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #1f2937;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+        h1 {
+            margin: 4px 0;
+            font-size: 30px;
+            letter-spacing: -0.02em;
+        }
+        .sub { color: var(--muted); margin: 0 0 16px 0; }
+        .eyebrow {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 14px;
+            border: 1px solid var(--stroke);
+        }
+        .status-pill.ontime { background: #ecfdf3; color: #15803d; border-color: #c9f3d6; }
+        .status-pill.late { background: #fef2f2; color: #b42318; border-color: #f3c4c0; }
+        .status-pill.neutral { background: #f5f5f5; color: #374151; }
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+            align-items: end;
+            margin-bottom: 14px;
+        }
+        .filters label {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-weight: 600;
+            color: var(--muted);
+        }
+        input[type="date"], input[type="text"] {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--stroke);
+            background: #f9fbff;
+            font-size: 14px;
+            transition: border-color 120ms ease, box-shadow 120ms ease;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 255, 0.1);
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 11px 14px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 14px;
+            transition: transform 100ms ease, box-shadow 140ms ease;
+        }
+        .btn:active { transform: translateY(1px); }
+        .btn.primary { background: var(--primary); color: #fff; box-shadow: 0 10px 24px rgba(37, 99, 255, 0.18); }
+        .btn.ghost { background: #f4f6fb; color: #111827; border: 1px solid var(--stroke); }
+        .table-wrap {
+            background: #f9fbff;
+            border: 1px solid var(--stroke);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 14px;
+            text-align: left;
+        }
+        th {
+            background: linear-gradient(90deg, #e8efff, #f3f6ff);
+            color: #1e3a8a;
+            font-size: 13px;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+        }
+        td {
+            border-top: 1px solid var(--stroke);
+            color: #111827;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        tbody tr:nth-child(2n) td { background: #fdfefe; }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+        }
+        .pagination button {
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--stroke);
+            background: #fff;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .chart-card {
+            margin-top: 22px;
+            padding: 18px;
+            border: 1px solid var(--stroke);
+            border-radius: 14px;
+            background: #ffffff;
+        }
+        .chart-title {
+            margin: 0 0 8px 0;
+            color: #1f2937;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .chart-sub { margin: 0; color: var(--muted); font-size: 13px; }
+    </style>
+</head>
+<body>
+<div class="shell">
+    <div class="panel">
+        <div class="nav">
+            <a href="/admin-panel/{{ office }}/" class="back-btn">&larr; Back to Employees</a>
+            <div>
+                <div class="eyebrow">Status for {{ date_filter }}</div>
+                {% if status == "Late" %}
+                <span class="status-pill late">Late</span>
+                {% elif status == "Absent" %}
+                <span class="status-pill neutral">Absent</span>
+                {% else %}
+                <span class="status-pill ontime">On Time</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <h1>Logs for {{ employee }}</h1>
+        <p class="sub">Office: {{ office }} • Live updates every 10 seconds</p>
+
+        <form class="filters" method="GET">
+            <label>
+                <span>Date</span>
+                <input type="date" name="date" value="{{ date_filter }}">
+            </label>
+            <label>
+                <span>Search</span>
+                <input id="searchBox" type="text" placeholder="Search logs...">
+            </label>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button type="submit" class="btn primary">Filter</button>
+                <button type="button" class="btn ghost" onclick="exportCSV()">Export CSV</button>
+            </div>
+        </form>
+
+        <div class="table-wrap">
+            <table id="logsTable" data-sort="asc">
+                <thead>
+                <tr>
+                    <th onclick="sortTable(0)">Timestamp &#9650;&#9660;</th>
+                    <th onclick="sortTable(1)">Period &#9650;&#9660;</th>
+                    <th onclick="sortTable(2)">Confidence &#9650;&#9660;</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in logs %}
+                <tr>
+                    <td>{{ row.timestamp }}</td>
+                    <td>{{ row.period }}</td>
+                    <td>{{ row.confidence }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <div class="pagination" id="pagination"></div>
+        </div>
+
+        <div class="chart-card">
+            <p class="chart-title">Confidence Trend</p>
+            <p class="chart-sub">Tracks recognition confidence over time for {{ employee }}.</p>
+            <canvas id="logChart" height="100"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+// Search filter
+document.getElementById("searchBox").addEventListener("keyup", function() {
+    let filter = this.value.toLowerCase();
+    let rows = document.querySelectorAll("#logsTable tbody tr");
+
+    rows.forEach(r => {
+        let text = r.innerText.toLowerCase();
+        r.style.display = text.includes(filter) ? "" : "none";
+    });
+});
+
+// Sorting
+function sortTable(colIndex) {
+    let table = document.getElementById("logsTable");
+    let rows = Array.from(table.rows).slice(1);
+    let asc = table.getAttribute("data-sort") !== "asc";
+
+    rows.sort((a, b) => {
+        let x = a.cells[colIndex].innerText;
+        let y = b.cells[colIndex].innerText;
+        return asc ? x.localeCompare(y) : y.localeCompare(x);
+    });
+
+    rows.forEach(r => table.appendChild(r));
+    table.setAttribute("data-sort", asc ? "asc" : "desc");
+}
+
+// Pagination
+const rowsPerPage = 10;
+const rows = document.querySelectorAll("#logsTable tbody tr");
+const pageCount = Math.ceil(rows.length / rowsPerPage) || 1;
+
+function showPage(page) {
+    rows.forEach((row, i) => {
+        row.style.display = (i >= (page - 1) * rowsPerPage && i < page * rowsPerPage) ? "" : "none";
+    });
+}
+
+function createPagination() {
+    let container = document.getElementById("pagination");
+    for (let i = 1; i <= pageCount; i++) {
+        let btn = document.createElement("button");
+        btn.innerText = i;
+        btn.onclick = () => showPage(i);
+        container.appendChild(btn);
+    }
+}
+
+createPagination();
+showPage(1);
+
+// Export CSV
+function exportCSV() {
+    let csv = "Timestamp,Period,Confidence\\n";
+    rows.forEach(r => {
+        let cols = r.querySelectorAll("td");
+        csv += `${cols[0].innerText},${cols[1].innerText},${cols[2].innerText}\\n`;
+    });
+
+    let blob = new Blob([csv], { type: "text/csv" });
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "logs.csv";
+    a.click();
+}
+
+// Auto refresh every 10 seconds
+setInterval(() => location.reload(), 10000);
+
+// Chart JS (Confidence Trend)
+let timestamps = [];
+let confidences = [];
+
+document.querySelectorAll("#logsTable tbody tr").forEach(r => {
+    timestamps.push(r.cells[0].innerText);
+    confidences.push(parseFloat(r.cells[2].innerText));
+});
+
+new Chart(document.getElementById("logChart"), {
+    type: "line",
+    data: {
+        labels: timestamps,
+        datasets: [{
+            label: "Confidence",
+            data: confidences,
+            borderColor: "#2563ff",
+            backgroundColor: "rgba(37, 99, 255, 0.08)",
+            fill: true,
+            tension: 0.25,
+            pointRadius: 3
+        }]
+    },
+    options: {
+        scales: {
+            y: { suggestedMin: 0, suggestedMax: 100 }
+        },
+        plugins: { legend: { display: false } }
+    }
+});
+</script>
+
+</body>
+</html>
