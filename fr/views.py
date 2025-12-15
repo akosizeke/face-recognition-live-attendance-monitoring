@@ -1,5 +1,6 @@
 from django.shortcuts import render
 import os
+import shutil
 import csv
 import json
 import base64
@@ -405,3 +406,140 @@ def analyze_daily_status(logs):
         return "Late"
 
     return "On Time"
+
+
+# ---------------------- API helpers -----------------------------------------
+
+def list_offices(request):
+    """
+    Return a consolidated list of offices based on dataset folders and attendance CSV.
+    """
+    offices = set()
+
+    # Collect from datasets directory (trained/enrolled offices)
+    if DATASETS.exists():
+        for office_dir in DATASETS.iterdir():
+            if office_dir.is_dir():
+                offices.add(office_dir.name)
+
+    # Collect from attendance logs (offices that already have records)
+    if ATTENDANCE_CSV.exists():
+        with open(ATTENDANCE_CSV, newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                name = row.get("office") or ""
+                if name:
+                    offices.add(name)
+
+    return JsonResponse({"ok": True, "offices": sorted(offices)})
+
+
+@csrf_exempt
+def delete_office(request):
+    """
+    Delete an office: removes dataset folder and prunes attendance rows.
+    """
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "Method not allowed"}, status=405)
+
+    try:
+        office = (json.loads(request.body).get("office") or "").strip()
+    except Exception:
+        office = ""
+
+    if not office:
+        return JsonResponse({"ok": False, "error": "Office required"}, status=400)
+
+    # Remove dataset directory if present
+    office_dir = DATASETS / office
+    if office_dir.exists() and office_dir.is_dir():
+        shutil.rmtree(office_dir, ignore_errors=True)
+
+    # Rewrite attendance CSV without that office
+    if ATTENDANCE_CSV.exists():
+        tmp_path = ATTENDANCE_CSV.with_suffix(".tmp")
+        with open(ATTENDANCE_CSV, newline='', encoding='utf-8') as src, \
+                open(tmp_path, "w", newline='', encoding='utf-8') as dst:
+            reader = csv.DictReader(src)
+            writer = csv.DictWriter(dst, fieldnames=reader.fieldnames)
+            writer.writeheader()
+            for row in reader:
+                if row.get("office") != office:
+                    writer.writerow(row)
+        tmp_path.replace(ATTENDANCE_CSV)
+
+    # reset in-memory caches to avoid stale labels
+    global _recognizer, _label_map
+    _recognizer = None
+    _label_map = None
+
+    return JsonResponse({"ok": True, "deleted": office})
+
+
+@csrf_exempt
+def rename_office(request):
+    """
+    Rename an office: renames dataset folder, updates attendance rows, and relabels keys.
+    """
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        data = {}
+
+    old = (data.get("old") or "").strip()
+    new = (data.get("new") or "").strip()
+
+    if not old or not new:
+        return JsonResponse({"ok": False, "error": "Both old and new office names are required"}, status=400)
+    if old == new:
+        return JsonResponse({"ok": False, "error": "Office name unchanged"}, status=400)
+
+    dst_dir = DATASETS / new
+    if dst_dir.exists():
+        return JsonResponse({"ok": False, "error": "New office name already exists"}, status=400)
+
+    # rename dataset folder if it exists
+    src_dir = DATASETS / old
+    if src_dir.exists() and src_dir.is_dir():
+        shutil.move(str(src_dir), str(dst_dir))
+
+    # rewrite attendance CSV with updated office
+    if ATTENDANCE_CSV.exists():
+        tmp_path = ATTENDANCE_CSV.with_suffix(".tmp")
+        with open(ATTENDANCE_CSV, newline='', encoding='utf-8') as src, \
+                open(tmp_path, "w", newline='', encoding='utf-8') as dst:
+            reader = csv.DictReader(src)
+            writer = csv.DictWriter(dst, fieldnames=reader.fieldnames)
+            writer.writeheader()
+            for row in reader:
+                if row.get("office") == old:
+                    row["office"] = new
+                writer.writerow(row)
+        tmp_path.replace(ATTENDANCE_CSV)
+
+    # update labels.json if present (rename office prefix)
+    if LABELS_PATH.exists():
+        try:
+            with open(LABELS_PATH, "r", encoding="utf-8") as f:
+                labels = json.load(f)
+        except Exception:
+            labels = {}
+
+        updated = {}
+        for k, v in labels.items():
+            if k.startswith(f"{old}:"):
+                updated[f"{new}:{k.split(':', 1)[1]}"] = v
+            else:
+                updated[k] = v
+
+        with open(LABELS_PATH, "w", encoding="utf-8") as f:
+            json.dump(updated, f, indent=2)
+
+    global _recognizer, _label_map
+    _recognizer = None
+    _label_map = None
+
+    return JsonResponse({"ok": True, "old": old, "new": new})

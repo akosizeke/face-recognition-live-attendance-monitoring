@@ -143,6 +143,28 @@
       gap: 10px;
       margin-top: 10px;
     }
+    .context-menu {
+      position: absolute;
+      background: #111827;
+      color: white;
+      border-radius: 10px;
+      padding: 8px 0;
+      min-width: 180px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      display: none;
+      z-index: 20;
+    }
+    .context-menu button {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: white;
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .context-menu button:hover { background: rgba(255,255,255,0.08); }
     #log {
       background: #f9fbff;
       padding: 14px;
@@ -191,8 +213,12 @@
       <input id="label" placeholder="Employee Name">
     </div>
     <div>
-      <label for="office">Office</label>
-      <input id="office" placeholder="Office (e.g., IT)">
+      <label for="officeSelect">Office</label>
+      <select id="officeSelect">
+        <option value="">Select office</option>
+        <option value="__new">+ Add new office</option>
+      </select>
+      <input id="officeCustom" placeholder="New office name" style="display:none; margin-top:8px;">
     </div>
     <div>
       <label for="count">Samples</label>
@@ -211,6 +237,11 @@
     <button id="downloadAttendance" class="btn warn">Download Attendance</button>
   </div>
 
+  <div id="officeMenu" class="context-menu">
+    <button id="deleteOfficeAction">Delete office</button>
+    <button id="renameOfficeAction">Rename office</button>
+  </div>
+
   <div class="admin-row">
     <button onclick="window.location.href='/admin-panel/'" class="btn ghost" style="width:auto;">
       Open Admin Panel
@@ -225,6 +256,11 @@
 const cam = document.getElementById('cam');
 const overlay = document.getElementById('overlay');
 const logEl = document.getElementById('log');
+const officeSelect = document.getElementById('officeSelect');
+const officeCustom = document.getElementById('officeCustom');
+const officeMenu = document.getElementById('officeMenu');
+const deleteOfficeAction = document.getElementById('deleteOfficeAction');
+const renameOfficeAction = document.getElementById('renameOfficeAction');
 let liveInterval = null;
 let busy = false;
 
@@ -255,6 +291,67 @@ function log(msg){
   logEl.textContent = typeof msg === "string" ? msg : JSON.stringify(msg,null,2);
 }
 
+async function loadOffices(){
+  try {
+    const res = await fetch("/offices/");
+    const data = await res.json();
+    if (data.ok && Array.isArray(data.offices)) {
+      const selected = officeSelect.value;
+      officeSelect.innerHTML = "";
+      const opts = [{ value: "", label: "Select office" }]
+        .concat(data.offices.map(o => ({ value: o, label: o })))
+        .concat({ value: "__new", label: "+ Add new office" });
+
+      opts.forEach(item => {
+        const opt = document.createElement("option");
+        opt.value = item.value;
+        opt.textContent = item.label;
+        officeSelect.appendChild(opt);
+      });
+      // restore selection if still present
+      if ([...officeSelect.options].some(o => o.value === selected)) {
+        officeSelect.value = selected;
+      }
+      toggleCustomOffice();
+    }
+  } catch (e) {
+    console.warn("Unable to load offices", e);
+  }
+}
+
+function toggleCustomOffice() {
+  if (officeSelect.value === "__new") {
+    officeCustom.style.display = "block";
+    officeCustom.focus();
+  } else {
+    officeCustom.style.display = "none";
+  }
+}
+
+officeSelect.addEventListener("change", toggleCustomOffice);
+officeSelect.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  const val = officeSelect.value;
+  if (!val || val === "__new") return;
+  const rect = officeSelect.getBoundingClientRect();
+  officeMenu.style.display = "block";
+  officeMenu.style.top = `${e.clientY + window.scrollY + 6}px`;
+  officeMenu.style.left = `${e.clientX + window.scrollX + 6}px`;
+});
+
+document.addEventListener("click", (e) => {
+  if (!officeMenu.contains(e.target) && e.target !== officeSelect) {
+    officeMenu.style.display = "none";
+  }
+});
+
+function resolveOfficeValue() {
+  if (officeSelect.value === "__new") {
+    return officeCustom.value.trim();
+  }
+  return officeSelect.value.trim();
+}
+
 function snapshot(){
   const c = document.createElement('canvas');
   c.width = cam.videoWidth || cam.offsetWidth;
@@ -274,7 +371,7 @@ async function postJSON(url, data){
 
 document.getElementById('autoEnrollBtn').addEventListener('click', async () => {
   const label = document.getElementById('label').value.trim();
-  const office = document.getElementById('office').value.trim();
+  const office = resolveOfficeValue();
   const count = parseInt(document.getElementById('count').value || 5, 10);
   if (!label) return alert("Enter name");
   if (!office) return alert("Enter office");
@@ -286,6 +383,65 @@ document.getElementById('autoEnrollBtn').addEventListener('click', async () => {
     await new Promise(r=>setTimeout(r,500));
   }
   log("Auto enroll done - train model next!");
+  loadOffices();
+});
+
+deleteOfficeAction.addEventListener('click', async () => {
+  officeMenu.style.display = "none";
+  const office = officeSelect.value;
+  if (!office || office === "__new") return;
+  const sure = confirm(`Remove office "${office}"? This will delete its training data and attendance rows.`);
+  if (!sure) return;
+  try {
+    const res = await fetch("/offices/delete/", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ office })
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      alert(data.error || "Unable to delete office.");
+      return;
+    }
+    log(`Office "${office}" removed.`);
+    officeSelect.value = "";
+    officeCustom.value = "";
+    toggleCustomOffice();
+    loadOffices();
+  } catch (e) {
+    alert("Error deleting office. See console for details.");
+    console.error(e);
+  }
+});
+
+renameOfficeAction.addEventListener('click', async () => {
+  officeMenu.style.display = "none";
+  const office = officeSelect.value;
+  if (!office || office === "__new") return;
+  const next = prompt(`Rename office "${office}" to:`, office);
+  if (!next) return;
+  const newName = next.trim();
+  if (!newName || newName === office) return;
+  try {
+    const res = await fetch("/offices/rename/", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ old: office, new: newName })
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      alert(data.error || "Unable to rename office.");
+      return;
+    }
+    log(`Office renamed to "${newName}".`);
+    officeSelect.value = newName;
+    officeCustom.value = "";
+    toggleCustomOffice();
+    loadOffices();
+  } catch (e) {
+    alert("Error renaming office. See console for details.");
+    console.error(e);
+  }
 });
 
 document.getElementById('trainBtn').addEventListener('click', async () => {
@@ -349,6 +505,7 @@ function drawResults(results){
 }
 
 startCamera();
+loadOffices();
 </script>
 
 </body>

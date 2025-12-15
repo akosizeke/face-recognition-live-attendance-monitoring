@@ -296,13 +296,20 @@ showPage(1);
 
 // Export CSV
 function exportCSV() {
-    let csv = "Timestamp,Period,Confidence\\n";
+    const header = ["Timestamp", "Period", "Confidence"];
+    const lines = [header.join(",")];
     rows.forEach(r => {
-        let cols = r.querySelectorAll("td");
-        csv += `${cols[0].innerText},${cols[1].innerText},${cols[2].innerText}\\n`;
+        const cols = r.querySelectorAll("td");
+        const vals = [
+            cols[0].innerText.trim(),
+            cols[1].innerText.trim(),
+            cols[2].innerText.trim()
+        ];
+        lines.push(vals.map(v => `"${v.replace(/"/g, '""')}"`).join(","));
     });
 
-    let blob = new Blob([csv], { type: "text/csv" });
+    const csv = "\ufeff" + lines.join("\r\n");
+    let blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     let url = URL.createObjectURL(blob);
     let a = document.createElement("a");
     a.href = url;
