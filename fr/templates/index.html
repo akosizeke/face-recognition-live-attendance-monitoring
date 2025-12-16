@@ -1,133 +1,149 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
+{% load static %}
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <title>Face Recognition System</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&display=swap');
-    :root{
-      --bg: #e8edf5;
+    :root {
+      --bg: #eef2f8;
       --panel: #ffffff;
+      --surface: #f5f7fb;
       --stroke: #e5e9f0;
-      --primary: #2563ff;
+      --primary: #2563eb;
       --accent: #0ea5e9;
-      --success: #22c55e;
+      --success: #16a34a;
       --warning: #f97316;
       --ink: #0f172a;
       --muted: #64748b;
+      --sidebar-width: 320px;
+      --sidebar-transition: 0.35s ease;
     }
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
-      background: radial-gradient(circle at 20% 20%, #f5f7fb, #e5ebf7 48%, #e8eefc);
+      min-height: 100vh;
+      background: radial-gradient(circle at 12% 18%, #f5f7fb, #e7edf8 52%, #e1e7f3 100%);
       color: var(--ink);
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 40px 18px;
       font-family: 'Manrope', 'Segoe UI', sans-serif;
+      overflow: hidden;
     }
-    .container {
+    .layout {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) 1fr;
+      width: 100%;
+      height: 100vh;
+      transition: grid-template-columns var(--sidebar-transition);
+    }
+    body.sidebar-collapsed .layout {
+      grid-template-columns: 0 1fr;
+    }
+    .sidebar {
       background: var(--panel);
-      width: 1040px;
-      padding: 26px 32px;
-      border-radius: 18px;
-      box-shadow: 0 18px 55px rgba(15, 23, 42, 0.08);
-      border: 1px solid var(--stroke);
-      animation: fadeIn 0.45s ease;
+      border-right: 1px solid var(--stroke);
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+      transition: transform var(--sidebar-transition), opacity 0.25s ease;
+      box-shadow: 10px 0 32px rgba(15, 23, 42, 0.08);
+      z-index: 15;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: translateY(0); }
+    body.sidebar-collapsed .sidebar {
+      transform: translateX(-100%);
+      opacity: 0;
+      pointer-events: none;
     }
-    header {
+    .sidebar__header {
+      padding: 6px 2px 10px;
+    }
+    .gov-logos {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
       gap: 10px;
-      margin-bottom: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
     }
-    h1 {
+    .gov-logo {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--stroke);
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+      padding: 6px;
+    }
+    .sidebar__header .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin: 0 0 6px 0;
+    }
+    .sidebar__header h2 {
       margin: 0;
-      font-size: 30px;
-      letter-spacing: -0.02em;
-      color: #0b3b73;
+      font-size: 22px;
+      letter-spacing: -0.01em;
+      color: #0b1a2f;
     }
-    .badge {
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: #ecfdf3;
-      color: var(--success);
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: 0.2px;
-    }
-    .sub {
-      margin: 0 0 14px 0;
+    .sidebar__header p {
+      margin: 6px 0 0 0;
       color: var(--muted);
       font-weight: 600;
+      line-height: 1.4;
     }
-    #videoWrap {
-      position: relative;
-      width: 700px;
-      margin: 18px auto;
-      background: #0b2237;
-      border-radius: 16px;
-      padding: 10px;
-      box-shadow: 0 12px 30px rgba(2,6,23,0.15);
-      border: 1px solid var(--stroke);
-    }
-    video {
-      width: 100%;
-      height: 480px;
-      border-radius: 12px;
-      background: #000;
-      object-fit: cover;
-      display: block;
-    }
-    canvas.overlay {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      width: calc(100% - 20px);
-      height: 480px;
-      pointer-events: none;
-      border-radius: 12px;
-      background: transparent;
+    .sidebar__scroll {
+      overflow-y: auto;
+      height: calc(100vh - 90px);
+      padding-right: 6px;
     }
     .controls {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 10px;
-      margin-top: 12px;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 10px;
     }
-    label { font-weight: 600; color: var(--muted); font-size: 13px; display: block; margin-bottom: 6px; }
+    label {
+      font-weight: 600;
+      color: var(--muted);
+      font-size: 13px;
+      display: block;
+      margin-bottom: 6px;
+    }
     input, select {
       width: 100%;
-      padding: 10px 12px;
+      padding: 11px 12px;
       border: 1px solid var(--stroke);
-      border-radius: 10px;
-      background: #f9fbff;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
       color: var(--ink);
       font-size: 14px;
       outline: none;
-      transition: box-shadow .15s, border-color .15s;
+      transition: box-shadow .15s, border-color .15s, background .15s;
     }
     input::placeholder { color: var(--muted); }
-    input:focus, select:focus{
+    input:focus, select:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(37, 99, 255, 0.12);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 16px 0 10px;
     }
     .btn {
-      padding: 11px 14px;
+      padding: 12px 14px;
       border: none;
-      border-radius: 10px;
+      border-radius: 12px;
       cursor: pointer;
       color: white;
       font-weight: 700;
-      box-shadow: 0 10px 24px rgba(2,6,23,0.12);
-      transition: transform .08s ease, box-shadow .12s ease;
+      box-shadow: 0 10px 24px rgba(2,6,23,0.18);
+      transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease;
       width: 100%;
     }
     .btn:hover { transform: translateY(-1px); }
@@ -136,121 +152,303 @@
     .btn.accent { background: var(--accent); }
     .btn.live { background: #6f42c1; }
     .btn.warn { background: var(--warning); }
-    .btn.ghost { background: #f4f6fb; color:#1f2937; box-shadow:none; border:1px solid #e6e9ee; }
-    .actions {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    .btn.ghost {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--ink);
+      box-shadow:none;
+      border:1px solid var(--stroke);
+    }
+    .admin-row {
+      margin: 8px 0 14px;
+      display: flex;
       gap: 10px;
-      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .log {
+      background: var(--surface);
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid var(--stroke);
+      color: #0f172a;
+      margin-top: 4px;
+    }
+    .main {
+      position: relative;
+      padding: 18px 22px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow: hidden;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .title-block h1 {
+      margin: 4px 0 4px;
+      font-size: 28px;
+      letter-spacing: -0.02em;
+    }
+    .title-block .sub {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 600;
+      max-width: 520px;
+    }
+    .hero-logos {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .hero-logo {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid var(--stroke);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+      padding: 8px;
+    }
+    .fs-btn {
+      border: 1px solid var(--stroke);
+      background: #0f172a;
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.15);
+      transition: transform .08s ease, box-shadow .12s ease, background .12s;
+    }
+    .fs-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.2);
+      background: #111c33;
+    }
+    .badge {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #e8fff1;
+      color: #16a34a;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      border: 1px solid #c0f3d4;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .stage {
+      flex: 1;
+      min-height: 480px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #videoWrap {
+      position: relative;
+      width: 100%;
+      max-width: 1220px;
+      height: calc(100vh - 220px);
+      min-height: 420px;
+      background: #f8fafc;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
+      border: 1px solid var(--stroke);
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      border-radius: 18px;
+      background: #000;
+      object-fit: cover;
+      display: block;
+    }
+    canvas.overlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      border-radius: 18px;
+      background: transparent;
     }
     .context-menu {
       position: absolute;
-      background: #111827;
-      color: white;
+      background: #ffffff;
+      color: #0f172a;
       border-radius: 10px;
       padding: 8px 0;
       min-width: 180px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      box-shadow: 0 10px 30px rgba(15,23,42,0.15);
       display: none;
-      z-index: 20;
+      z-index: 50;
+      border: 1px solid var(--stroke);
     }
     .context-menu button {
       width: 100%;
       background: transparent;
       border: none;
-      color: white;
+      color: #0f172a;
       text-align: left;
       padding: 10px 14px;
       font-weight: 700;
       cursor: pointer;
     }
-    .context-menu button:hover { background: rgba(255,255,255,0.08); }
-    #log {
-      background: #f9fbff;
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 13px;
-      max-height: 200px;
-      overflow-y: auto;
-      border: 1px solid #e6eef9;
-      color: #0b2237;
-      margin-top: 16px;
+    .context-menu button:hover { background: #f1f5f9; }
+    @media (max-width: 1100px) {
+      body {
+        overflow-y: auto;
+      }
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      body.sidebar-collapsed .layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        width: 320px;
+        max-width: 90vw;
+        position: fixed;
+        inset: 0 auto 0 0;
+        border-right: 1px solid var(--stroke);
+        box-shadow: 12px 0 40px rgba(0,0,0,0.4);
+      }
+      .sidebar__scroll {
+        height: calc(100vh - 80px);
+      }
+      .main {
+        padding: 16px;
+      }
+      #videoWrap {
+        height: 72vh;
+        min-height: 360px;
+      }
     }
-    .admin-row {
-      margin-top: 8px;
-      display: flex;
-      justify-content: flex-start;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    @media (max-width:980px){
-      .container { width: 100%; padding:18px; }
-      #videoWrap { width:100%; }
-      video, canvas.overlay { height:auto; aspect-ratio: 4/3; }
+    @media (max-width: 640px) {
+      .actions {
+        grid-template-columns: 1fr;
+      }
+      .topbar {
+        align-items: flex-start;
+      }
+      .title-block h1 {
+        font-size: 24px;
+      }
     }
   </style>
 </head>
 
 <body>
 
-<div class="container">
-  <header>
-    <div>
-      <h1>Face Recognition System</h1>
-      <p class="sub">Enroll, train, and monitor attendance with live recognition.</p>
+<div class="layout">
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar__header">
+      <div class="gov-logos">
+        <img class="gov-logo"
+             src="{% static 'img/Official-Logo-1.png' %}"
+             alt="Bulacan Seal"
+             onerror="this.onerror=null; this.src='{% static 'img/bulacan-placeholder.svg' %}';">
+        <img class="gov-logo"
+             src="{% static 'img/peoples-agenda-e1636598233282.png' %}"
+             alt="People's Agenda Seal"
+             onerror="this.onerror=null; this.src='{% static 'img/peoples-agenda-placeholder.svg' %}';">
+      </div>
+      <h2>Face Recognition System</h2>
     </div>
-    <span class="badge">Live</span>
-  </header>
 
-  <div id="videoWrap">
-    <video id="cam" autoplay playsinline></video>
-    <canvas id="overlay" class="overlay"></canvas>
-  </div>
+    <div class="sidebar__scroll">
+      <div class="controls">
+        <div>
+          <label for="label">Employee Name</label>
+          <input id="label" placeholder="Employee Name">
+        </div>
+        <div>
+          <label for="officeSelect">Office</label>
+          <select id="officeSelect">
+            <option value="">Select office</option>
+            <option value="__new">+ Add new office</option>
+          </select>
+          <input id="officeCustom" placeholder="New office name" style="display:none; margin-top:8px;">
+        </div>
+        <div>
+          <label for="count">Samples</label>
+          <input id="count" type="number" value="5" min="1" max="20">
+        </div>
+        <div>
+          <label for="threshold">Threshold</label>
+          <input id="threshold" type="number" value="80">
+        </div>
+      </div>
 
-  <div class="controls">
-    <div>
-      <label for="label">Employee Name</label>
-      <input id="label" placeholder="Employee Name">
+      <div class="actions">
+        <button id="autoEnrollBtn" class="btn primary">Auto-Enroll</button>
+        <button id="trainBtn" class="btn success">Train Model</button>
+        <button id="toggleLiveBtn" class="btn live">Start Live</button>
+        <button id="downloadAttendance" class="btn warn">Download Attendance</button>
+      </div>
+
+      <div class="admin-row">
+        <button onclick="window.location.href='/admin-panel/'" class="btn ghost" style="width:auto;">
+          Open Admin Panel
+        </button>
+      </div>
+
+      <div id="log" class="log">Ready.</div>
     </div>
-    <div>
-      <label for="officeSelect">Office</label>
-      <select id="officeSelect">
-        <option value="">Select office</option>
-        <option value="__new">+ Add new office</option>
-      </select>
-      <input id="officeCustom" placeholder="New office name" style="display:none; margin-top:8px;">
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="title-block">
+        <p class="eyebrow">Live feed</p>
+        <h1>Face Recognition System</h1>
+        <p class="sub">Enroll, train, and monitor attendance with live recognition.</p>
+      </div>
+      <div class="top-actions" style="gap:14px;">
+        <div class="hero-logos">
+          <img class="hero-logo"
+               src="{% static 'img/Official-Logo-1.png' %}"
+               alt="Bulacan Seal"
+               onerror="this.onerror=null; this.src='{% static 'img/bulacan-placeholder.svg' %}';">
+          <img class="hero-logo"
+               src="{% static 'img/peoples-agenda-e1636598233282.png' %}"
+               alt="People's Agenda Seal"
+               onerror="this.onerror=null; this.src='{% static 'img/peoples-agenda-placeholder.svg' %}';">
+        </div>
+        <button id="fullscreenBtn" class="fs-btn" type="button">Fullscreen</button>
+        <span class="badge">Live</span>
+      </div>
     </div>
-    <div>
-      <label for="count">Samples</label>
-      <input id="count" type="number" value="5" min="1" max="20">
+
+    <div class="stage">
+      <div id="videoWrap">
+        <video id="cam" autoplay playsinline></video>
+        <canvas id="overlay" class="overlay"></canvas>
+      </div>
     </div>
-    <div>
-      <label for="threshold">Threshold</label>
-      <input id="threshold" type="number" value="80">
-    </div>
-  </div>
-
-  <div class="actions">
-    <button id="autoEnrollBtn" class="btn primary">Auto-Enroll</button>
-    <button id="trainBtn" class="btn success">Train Model</button>
-    <button id="toggleLiveBtn" class="btn live">Start Live</button>
-    <button id="downloadAttendance" class="btn warn">Download Attendance</button>
-  </div>
-
-  <div id="officeMenu" class="context-menu">
-    <button id="deleteOfficeAction">Delete office</button>
-    <button id="renameOfficeAction">Rename office</button>
-  </div>
-
-  <div class="admin-row">
-    <button onclick="window.location.href='/admin-panel/'" class="btn ghost" style="width:auto;">
-      Open Admin Panel
-    </button>
-  </div>
-
-  <div id="log">Ready.</div>
+  </main>
 </div>
 
+<div id="officeMenu" class="context-menu">
+  <button id="deleteOfficeAction" type="button">Delete office</button>
+  <button id="renameOfficeAction" type="button">Rename office</button>
+</div>
 
 <script>
 const cam = document.getElementById('cam');
@@ -261,8 +459,77 @@ const officeCustom = document.getElementById('officeCustom');
 const officeMenu = document.getElementById('officeMenu');
 const deleteOfficeAction = document.getElementById('deleteOfficeAction');
 const renameOfficeAction = document.getElementById('renameOfficeAction');
+const sidebar = document.getElementById('sidebar');
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+let hoverSidebar = false;
+let collapseTimer = null;
 let liveInterval = null;
 let busy = false;
+
+function setSidebar(open) {
+  const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+  if (open === !isCollapsed) return;
+  document.body.classList.toggle('sidebar-collapsed', !open);
+  if (!open) {
+    officeMenu.style.display = "none";
+  }
+  setTimeout(syncOverlay, 250);
+}
+
+sidebar.addEventListener('mouseenter', () => {
+  hoverSidebar = true;
+  clearTimeout(collapseTimer);
+  setSidebar(true);
+});
+sidebar.addEventListener('mouseleave', () => {
+  hoverSidebar = false;
+  scheduleCollapse();
+});
+
+function scheduleCollapse() {
+  clearTimeout(collapseTimer);
+  collapseTimer = setTimeout(() => {
+    if (!hoverSidebar) setSidebar(false);
+  }, 600);
+}
+
+document.addEventListener('mousemove', (e) => {
+  if (e.clientX < 40) {
+    setSidebar(true);
+  } else if (e.clientX > 260 && !hoverSidebar) {
+    scheduleCollapse();
+  }
+});
+
+function isFullscreen() {
+  return document.fullscreenElement === document.getElementById('videoWrap');
+}
+
+function syncFsButton() {
+  fullscreenBtn.textContent = isFullscreen() ? "Exit Fullscreen" : "Fullscreen";
+}
+
+async function toggleFullscreen() {
+  const wrap = document.getElementById('videoWrap');
+  try {
+    if (!isFullscreen()) {
+      await wrap.requestFullscreen();
+    } else {
+      await document.exitFullscreen();
+    }
+  } catch (e) {
+    console.warn("Fullscreen not available", e);
+  } finally {
+    syncFsButton();
+    setTimeout(syncOverlay, 150);
+  }
+}
+
+fullscreenBtn.addEventListener('click', toggleFullscreen);
+document.addEventListener('fullscreenchange', () => {
+  syncFsButton();
+  setTimeout(syncOverlay, 150);
+});
 
 async function startCamera(){
   try {
@@ -280,8 +547,8 @@ function syncOverlay() {
   const rect = cam.getBoundingClientRect();
   overlay.width = cam.videoWidth || rect.width || 640;
   overlay.height = cam.videoHeight || rect.height || 480;
-  overlay.style.width = cam.offsetWidth + "px";
-  overlay.style.height = cam.offsetHeight + "px";
+  overlay.style.width = rect.width + "px";
+  overlay.style.height = rect.height + "px";
 }
 
 cam.addEventListener('loadedmetadata', syncOverlay);
@@ -308,7 +575,6 @@ async function loadOffices(){
         opt.textContent = item.label;
         officeSelect.appendChild(opt);
       });
-      // restore selection if still present
       if ([...officeSelect.options].some(o => o.value === selected)) {
         officeSelect.value = selected;
       }
@@ -333,7 +599,6 @@ officeSelect.addEventListener("contextmenu", (e) => {
   e.preventDefault();
   const val = officeSelect.value;
   if (!val || val === "__new") return;
-  const rect = officeSelect.getBoundingClientRect();
   officeMenu.style.display = "block";
   officeMenu.style.top = `${e.clientY + window.scrollY + 6}px`;
   officeMenu.style.left = `${e.clientX + window.scrollX + 6}px`;
@@ -367,6 +632,13 @@ async function postJSON(url, data){
     body: JSON.stringify(data)
   });
   return res.json();
+}
+
+function getThresholdValue() {
+  const raw = document.getElementById('threshold').value;
+  const num = parseFloat(raw);
+  if (Number.isFinite(num)) return num;
+  return 80;
 }
 
 document.getElementById('autoEnrollBtn').addEventListener('click', async () => {
@@ -474,7 +746,10 @@ async function liveTick(){
   if (busy) return;
   busy = true;
   const img = snapshot();
-  const res = await postJSON("/recognize/", {image: img});
+  const res = await postJSON("/recognize/", {
+    image: img,
+    threshold: getThresholdValue()
+  });
   drawResults(res.results || []);
   busy = false;
 }
@@ -504,6 +779,8 @@ function drawResults(results){
   });
 }
 
+setSidebar(false);
+syncFsButton();
 startCamera();
 loadOffices();
 </script>

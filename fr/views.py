@@ -50,6 +50,7 @@ _recognizer = None
 _label_map = None
 _last_seen = {}
 _last_seen_lock = threading.Lock()
+_match_counts = {}
 
 
 def index(request):
@@ -167,6 +168,8 @@ def enroll(request):
         return JsonResponse({"ok": False, "error": str(e)}, status=400)
 
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.equalizeHist(gray)
+    gray = cv2.equalizeHist(gray)
     faces = face_cascade.detectMultiScale(gray, 1.1, 5)
 
     if len(faces) == 0:
@@ -175,6 +178,7 @@ def enroll(request):
     x, y, w, h = sorted(faces, key=lambda r: r[2] * r[3], reverse=True)[0]
     face = gray[y:y+h, x:x+w]
     face = cv2.resize(face, (200, 200))
+    face = cv2.equalizeHist(face)
 
     path = DATASETS / office / label
     path.mkdir(parents=True, exist_ok=True)
@@ -210,6 +214,7 @@ def train(request):
                 if img is None:
                     continue
                 img = cv2.resize(img, (200, 200))
+                img = cv2.equalizeHist(img)
                 imgs_for_employee.append(img)
 
             if not imgs_for_employee:
@@ -245,7 +250,10 @@ def train(request):
 @csrf_exempt
 def recognize(request):
     try:
-        img64 = json.loads(request.body).get("image")
+        payload = json.loads(request.body)
+        img64 = payload.get("image")
+        threshold_val = float(payload.get("threshold", RECOGNITION_THRESHOLD) or RECOGNITION_THRESHOLD)
+        threshold_val = max(30.0, min(150.0, threshold_val))  # clamp to sane range
     except Exception:
         return JsonResponse({"ok": False, "error": "Invalid request"}, status=400)
 
@@ -269,23 +277,37 @@ def recognize(request):
 
     results = []
 
+    now = datetime.now()
+
     for (x, y, w, h) in faces:
         face = cv2.resize(gray[y:y+h, x:x+w], (200, 200))
+        face = cv2.equalizeHist(face)
         label_id, confidence = recognizer.predict(face)
 
         fullname = inv.get(label_id)
-        matched = bool(fullname and ":" in fullname and confidence <= RECOGNITION_THRESHOLD)
-        name = fullname.split(":")[1] if matched else "unknown"
-        office = fullname.split(":")[0] if matched else ""
+        matched = bool(fullname and ":" in fullname and confidence <= threshold_val)
 
-        if matched:
+        # Stabilize across frames: require at least 2 consecutive hits per label within 3s
+        state = _match_counts.get(label_id, {"count": 0, "ts": now})
+        if (now - state["ts"]) > timedelta(seconds=3):
+            state["count"] = 0
+        state["count"] += 1 if matched else 0
+        state["ts"] = now
+        _match_counts[label_id] = state
+
+        stable = matched and state["count"] >= 2
+
+        name = fullname.split(":")[1] if stable else "unknown"
+        office = fullname.split(":")[0] if stable else ""
+
+        if stable:
             _write_attendance(fullname, confidence)
 
         results.append({
             "name": name,
             "office": office,
             "confidence": float(confidence),
-            "matched": matched,
+            "matched": stable,
             "bbox": [int(x), int(y), int(w), int(h)]
         })
 
