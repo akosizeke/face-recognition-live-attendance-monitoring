@@ -29,9 +29,17 @@
             background: var(--panel);
             border: 1px solid var(--stroke);
             border-radius: 18px;
-            padding: 26px 32px;
+            padding: 22px 28px 28px;
             box-shadow: 0 18px 55px rgba(15, 23, 42, 0.08);
         }
+        .section {
+            background: #fff;
+            border: 1px solid var(--stroke);
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-top: 12px;
+        }
+        .section.tight { padding: 12px 16px; }
         .nav {
             display: flex;
             align-items: center;
@@ -81,7 +89,7 @@
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 10px;
             align-items: end;
-            margin-bottom: 14px;
+            margin: 6px 0 6px;
         }
         .filters label {
             display: flex;
@@ -124,6 +132,7 @@
             border: 1px solid var(--stroke);
             border-radius: 14px;
             overflow: hidden;
+            margin-top: 10px;
         }
         table {
             width: 100%;
@@ -138,7 +147,6 @@
             color: #1e3a8a;
             font-size: 13px;
             letter-spacing: 0.02em;
-            cursor: pointer;
         }
         td {
             border-top: 1px solid var(--stroke);
@@ -162,11 +170,40 @@
             font-weight: 700;
         }
         .chart-card {
-            margin-top: 22px;
-            padding: 18px;
-            border: 1px solid var(--stroke);
-            border-radius: 14px;
-            background: #ffffff;
+            margin-top: 0;
+            padding: 0;
+            border: none;
+            background: transparent;
+        }
+        .summary-card {
+            padding: 0;
+            border: none;
+            background: transparent;
+        }
+        .summary-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        h3 {
+            margin: 8px 0 4px 0;
+            font-size: 18px;
+            letter-spacing: -0.01em;
+        }
+        .summary-note {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .empty-small {
+            padding: 14px;
+            border: 1px dashed var(--stroke);
+            border-radius: 12px;
+            text-align: center;
+            color: var(--muted);
+            background: #f9fbff;
+            margin-top: 10px;
         }
         .chart-title {
             margin: 0 0 8px 0;
@@ -175,6 +212,40 @@
             font-weight: 700;
         }
         .chart-sub { margin: 0; color: var(--muted); font-size: 13px; }
+        .live-preview {
+            position: fixed;
+            bottom: 18px;
+            right: 18px;
+            width: 260px;
+            height: 150px;
+            min-width: 180px;
+            min-height: 110px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 14px 40px rgba(0,0,0,0.18);
+            border: 1px solid var(--stroke);
+            z-index: 400;
+            resize: both;
+        }
+        .live-preview header {
+            position: absolute;
+            top: 6px;
+            left: 8px;
+            padding: 4px 8px;
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: move;
+            user-select: none;
+        }
+        .live-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
     </style>
 </head>
 <body>
@@ -197,49 +268,98 @@
         <h1>Logs for {{ employee }}</h1>
         <p class="sub">Office: {{ office }} • Live updates every 10 seconds</p>
 
-        <form class="filters" method="GET">
-            <label>
-                <span>Date</span>
-                <input type="date" name="date" value="{{ date_filter }}">
-            </label>
-            <label>
-                <span>Search</span>
-                <input id="searchBox" type="text" placeholder="Search logs...">
-            </label>
-            <div style="display:flex; gap:8px; align-items:center;">
-                <button type="submit" class="btn primary">Filter</button>
-                <button type="button" class="btn ghost" onclick="exportCSV()">Export CSV</button>
-            </div>
-        </form>
-
-        <div class="table-wrap">
-            <table id="logsTable" data-sort="asc">
-                <thead>
-                <tr>
-                    <th onclick="sortTable(0)">Timestamp &#9650;&#9660;</th>
-                    <th onclick="sortTable(1)">Period &#9650;&#9660;</th>
-                    <th onclick="sortTable(2)">Confidence &#9650;&#9660;</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for row in logs %}
-                <tr>
-                    <td>{{ row.timestamp }}</td>
-                    <td>{{ row.period }}</td>
-                    <td>{{ row.confidence }}</td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            <div class="pagination" id="pagination"></div>
+        <div class="section tight">
+            <form class="filters" method="GET" style="margin:0;">
+                <label>
+                    <span>Date</span>
+                    <input type="date" name="date" value="{{ date_filter }}">
+                </label>
+                <label>
+                    <span>Search</span>
+                    <input id="searchBox" type="text" placeholder="Search logs...">
+                </label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button type="submit" class="btn primary">Filter</button>
+                    <button type="button" class="btn ghost" onclick="exportCSV()">Export CSV</button>
+                </div>
+            </form>
         </div>
 
-        <div class="chart-card">
-            <p class="chart-title">Confidence Trend</p>
-            <p class="chart-sub">Tracks recognition confidence over time for {{ employee }}.</p>
-            <canvas id="logChart" height="100"></canvas>
+        <div class="section">
+            <div class="summary-card">
+                <div class="summary-head">
+                    <div>
+                        <div class="eyebrow">Late summary</div>
+                        <h3>Daily late entries</h3>
+                        <p class="summary-note">Earliest punch per day marked late (&gt; 8:00 AM).</p>
+                    </div>
+                </div>
+                {% if late_days %}
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>First log</th>
+                            <th>Period</th>
+                            <th>Confidence</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for row in late_days %}
+                        <tr>
+                            <td>{{ row.date }}</td>
+                            <td>{{ row.time }}</td>
+                            <td>{{ row.period }}</td>
+                            <td>{{ row.confidence }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-small">Walang late records para sa employee na ito.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="table-wrap">
+                <table id="logsTable" data-sort="asc">
+                    <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">Timestamp &#9650;&#9660;</th>
+                        <th onclick="sortTable(1)">Period &#9650;&#9660;</th>
+                        <th onclick="sortTable(2)">Confidence &#9650;&#9660;</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in logs %}
+                    <tr>
+                        <td>{{ row.timestamp }}</td>
+                        <td>{{ row.period }}</td>
+                        <td>{{ row.confidence }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <div class="pagination" id="pagination"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="chart-card">
+                <p class="chart-title">Confidence Trend</p>
+                <p class="chart-sub">Tracks recognition confidence over time for {{ employee }}.</p>
+                <canvas id="logChart" height="100"></canvas>
+            </div>
         </div>
     </div>
+</div>
+
+<div class="live-preview" aria-hidden="true" id="livePreview">
+    <header id="livePreviewHandle">Live camera</header>
+    <video id="adminCamPreview" autoplay muted playsinline></video>
 </div>
 
 <script>
@@ -350,6 +470,167 @@ new Chart(document.getElementById("logChart"), {
         plugins: { legend: { display: false } }
     }
 });
+
+// Live preview inside admin pages (reuses selected camera)
+const adminCamPreview = document.getElementById("adminCamPreview");
+const livePreview = document.getElementById("livePreview");
+const livePreviewHandle = document.getElementById("livePreviewHandle");
+let adminCamStream = null;
+const PREVIEW_STATE_KEY = "adminLivePreviewState";
+const DEFAULT_PREVIEW_STATE = {
+    width: "260px",
+    height: "150px",
+    right: "18px",
+    bottom: "18px"
+};
+
+function loadPreviewState() {
+    try {
+        const raw = localStorage.getItem(PREVIEW_STATE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (_) {
+        return null;
+    }
+}
+
+function savePreviewState(state) {
+    try {
+        localStorage.setItem(PREVIEW_STATE_KEY, JSON.stringify(state));
+    } catch (_) {}
+}
+
+function applyPreviewState() {
+    const state = loadPreviewState() || DEFAULT_PREVIEW_STATE;
+    livePreview.style.width = state.width || DEFAULT_PREVIEW_STATE.width;
+    livePreview.style.height = state.height || DEFAULT_PREVIEW_STATE.height;
+
+    if (state.left !== undefined && state.top !== undefined) {
+        livePreview.style.left = state.left;
+        livePreview.style.top = state.top;
+        livePreview.style.right = "auto";
+        livePreview.style.bottom = "auto";
+    } else {
+        livePreview.style.right = state.right || DEFAULT_PREVIEW_STATE.right;
+        livePreview.style.bottom = state.bottom || DEFAULT_PREVIEW_STATE.bottom;
+        livePreview.style.left = "auto";
+        livePreview.style.top = "auto";
+    }
+
+    clampPreviewWithinViewport();
+}
+
+async function startAdminPreview() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    if (adminCamStream) {
+        adminCamStream.getTracks().forEach(t => t.stop());
+        adminCamStream = null;
+    }
+    const stored = localStorage.getItem("selectedCameraId") || "";
+    const constraints = stored ? { video: { deviceId: { exact: stored } } } : { video: true };
+    try {
+        adminCamStream = await navigator.mediaDevices.getUserMedia(constraints);
+        adminCamPreview.srcObject = adminCamStream;
+        await adminCamPreview.play();
+    } catch (e) {
+        console.warn("Admin preview camera error", e);
+    }
+}
+
+startAdminPreview();
+if (navigator.mediaDevices) {
+    navigator.mediaDevices.addEventListener("devicechange", startAdminPreview);
+}
+
+// Dragging logic
+let dragActive = false;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+
+livePreviewHandle.addEventListener("mousedown", (e) => {
+    dragActive = true;
+    const rect = livePreview.getBoundingClientRect();
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
+    document.body.style.userSelect = "none";
+});
+
+window.addEventListener("mousemove", (e) => {
+    if (!dragActive) return;
+    const x = e.clientX - dragOffsetX;
+    const y = e.clientY - dragOffsetY;
+    livePreview.style.left = `${x}px`;
+    livePreview.style.top = `${y}px`;
+    livePreview.style.right = "auto";
+    livePreview.style.bottom = "auto";
+});
+
+window.addEventListener("mouseup", () => {
+    if (!dragActive) return;
+    dragActive = false;
+    document.body.style.userSelect = "";
+    savePreviewState({
+        left: livePreview.style.left,
+        top: livePreview.style.top,
+        width: livePreview.style.width,
+        height: livePreview.style.height
+    });
+});
+
+// Persist size changes when user stops resizing
+livePreview.addEventListener("mouseup", () => {
+    clampPreviewWithinViewport();
+    savePreviewState({
+        left: livePreview.style.left,
+        top: livePreview.style.top,
+        width: livePreview.style.width,
+        height: livePreview.style.height
+    });
+});
+
+// Reset to default on double click
+livePreviewHandle.addEventListener("dblclick", () => {
+    livePreview.style.right = DEFAULT_PREVIEW_STATE.right;
+    livePreview.style.bottom = DEFAULT_PREVIEW_STATE.bottom;
+    livePreview.style.left = "auto";
+    livePreview.style.top = "auto";
+    livePreview.style.width = DEFAULT_PREVIEW_STATE.width;
+    livePreview.style.height = DEFAULT_PREVIEW_STATE.height;
+    clampPreviewWithinViewport();
+    savePreviewState({
+        right: livePreview.style.right,
+        bottom: livePreview.style.bottom,
+        width: livePreview.style.width,
+        height: livePreview.style.height
+    });
+});
+
+function clampPreviewWithinViewport() {
+    const rect = livePreview.getBoundingClientRect();
+    let left = rect.left;
+    let top = rect.top;
+    let width = rect.width;
+    let height = rect.height;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    if (width > vw) width = vw - 20;
+    if (height > vh) height = vh - 20;
+
+    if (left + width > vw) left = vw - width - 10;
+    if (top + height > vh) top = vh - height - 10;
+    if (left < 0) left = 10;
+    if (top < 0) top = 10;
+
+    livePreview.style.left = `${left}px`;
+    livePreview.style.top = `${top}px`;
+    livePreview.style.right = "auto";
+    livePreview.style.bottom = "auto";
+}
+
+window.addEventListener("resize", clampPreviewWithinViewport);
+
+applyPreviewState();
 </script>
 
 </body>

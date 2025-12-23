@@ -30,7 +30,8 @@ RECOGNITION_THRESHOLD = 80.0
 
 # Office Hours
 LOG_INTERVAL = timedelta(minutes=2)
-MORNING_START = dtime(8, 0)
+# Start morning presence at 5:00 AM so early arrivals are counted as on time
+MORNING_START = dtime(5, 0)
 MORNING_END = dtime(12, 0)
 LUNCH_START = dtime(12, 0)
 LUNCH_END = dtime(13, 0)
@@ -146,6 +147,53 @@ def _write_attendance(fullname, confidence):
         ])
 
 
+def _safe_employee_dir(office, label):
+    office = (office or "").strip()
+    label = (label or "").strip()
+    if not office or not label:
+        return None
+
+    base = DATASETS.resolve()
+    path = (DATASETS / office / label).resolve()
+    if base not in path.parents:
+        return None
+    return path
+
+
+def _extract_primary_face(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    gray = cv2.equalizeHist(gray)
+    gray = cv2.equalizeHist(gray)
+    faces = face_cascade.detectMultiScale(gray, 1.1, 5)
+
+    if len(faces) == 0:
+        return None, None
+
+    x, y, w, h = sorted(faces, key=lambda r: r[2] * r[3], reverse=True)[0]
+    face_gray = gray[y:y+h, x:x+w]
+    if face_gray.size == 0:
+        return None, None
+    face_gray = cv2.resize(face_gray, (200, 200))
+    face_gray = cv2.equalizeHist(face_gray)
+
+    face_color = img[y:y+h, x:x+w]
+    if face_color.size == 0:
+        face_color = None
+    else:
+        face_color = cv2.resize(face_color, (240, 240))
+
+    return face_gray, face_color
+
+
+def _save_profile_image(path, face_gray, face_color):
+    profile_path = path / "profile.jpg"
+    if face_color is not None:
+        cv2.imwrite(str(profile_path), face_color)
+    else:
+        cv2.imwrite(str(profile_path), face_gray)
+    return profile_path
+
+
 # -------------------------------------------------------------------
 # ENROLL EMPLOYEE
 # -------------------------------------------------------------------
@@ -167,25 +215,22 @@ def enroll(request):
     except ValueError as e:
         return JsonResponse({"ok": False, "error": str(e)}, status=400)
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gray = cv2.equalizeHist(gray)
-    gray = cv2.equalizeHist(gray)
-    faces = face_cascade.detectMultiScale(gray, 1.1, 5)
-
-    if len(faces) == 0:
+    face_gray, face_color = _extract_primary_face(img)
+    if face_gray is None:
         return JsonResponse({"ok": False, "error": "No face detected"})
 
-    x, y, w, h = sorted(faces, key=lambda r: r[2] * r[3], reverse=True)[0]
-    face = gray[y:y+h, x:x+w]
-    face = cv2.resize(face, (200, 200))
-    face = cv2.equalizeHist(face)
-
-    path = DATASETS / office / label
+    path = _safe_employee_dir(office, label)
+    if path is None:
+        return JsonResponse({"ok": False, "error": "Invalid office or label"}, status=400)
     path.mkdir(parents=True, exist_ok=True)
 
-    count = len(list(path.glob("*.jpg"))) + 1
+    count = len(list(path.glob("img_*.jpg"))) + 1
     save_path = path / f"img_{count:04d}.jpg"
-    cv2.imwrite(str(save_path), face)
+    cv2.imwrite(str(save_path), face_gray)
+
+    profile_path = path / "profile.jpg"
+    if not profile_path.exists():
+        _save_profile_image(path, face_gray, face_color)
 
     return JsonResponse({"ok": True, "saved": str(save_path)})
 
@@ -209,7 +254,11 @@ def train(request):
 
             imgs_for_employee = []
 
-            for img_file in employee.glob("*.jpg"):
+            img_files = sorted(employee.glob("img_*.jpg"))
+            if not img_files:
+                img_files = [p for p in employee.glob("*.jpg") if p.name != "profile.jpg"]
+
+            for img_file in img_files:
                 img = cv2.imread(str(img_file), cv2.IMREAD_GRAYSCALE)
                 if img is None:
                     continue
@@ -315,6 +364,65 @@ def recognize(request):
 
 
 
+def profile_image(request, office, employee):
+    path = _safe_employee_dir(office, employee)
+    if path is None:
+        raise Http404("Invalid profile path")
+
+    profile_path = path / "profile.jpg"
+    if profile_path.exists():
+        return FileResponse(open(profile_path, "rb"), content_type="image/jpeg")
+
+    img_files = sorted(path.glob("img_*.jpg"))
+    if not img_files:
+        img_files = [p for p in path.glob("*.jpg") if p.name != "profile.jpg"]
+        img_files = sorted(img_files)
+
+    if img_files:
+        return FileResponse(open(img_files[0], "rb"), content_type="image/jpeg")
+
+    raise Http404("Profile not found")
+
+
+@csrf_exempt
+def update_profile(request):
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        label = (data.get("label") or "").strip()
+        office = (data.get("office") or "").strip()
+        img64 = data.get("image")
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Invalid request"}, status=400)
+
+    if not label or not office or not img64:
+        return JsonResponse({"ok": False, "error": "label, office, and image required"}, status=400)
+
+    try:
+        img = decode_image(img64)
+    except ValueError as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=400)
+
+    face_gray, face_color = _extract_primary_face(img)
+    if face_gray is None:
+        return JsonResponse({"ok": False, "error": "No face detected"})
+
+    path = _safe_employee_dir(office, label)
+    if path is None:
+        return JsonResponse({"ok": False, "error": "Invalid office or label"}, status=400)
+    path.mkdir(parents=True, exist_ok=True)
+
+    count = len(list(path.glob("img_*.jpg"))) + 1
+    save_path = path / f"img_{count:04d}.jpg"
+    cv2.imwrite(str(save_path), face_gray)
+
+    profile_path = _save_profile_image(path, face_gray, face_color)
+
+    return JsonResponse({"ok": True, "saved": str(save_path), "profile": str(profile_path)})
+
+
 def download_attendance(request):
     if not ATTENDANCE_CSV.exists():
         raise Http404("No attendance CSV")
@@ -329,6 +437,13 @@ def admin_offices(request):
     """
     Show list of offices found in attendance CSV (safe if columns missing).
     """
+    offices = set()
+
+    if DATASETS.exists():
+        for office_dir in DATASETS.iterdir():
+            if office_dir.is_dir():
+                offices.add(office_dir.name)
+
     logs = []
     if ATTENDANCE_CSV.exists():
         with open(ATTENDANCE_CSV, newline='', encoding='utf-8') as f:
@@ -339,7 +454,9 @@ def admin_offices(request):
                 logs.append(row)
 
     # use .get to be safe
-    offices = sorted({r.get("office", "Unknown") for r in logs})
+    for row in logs:
+        offices.add(row.get("office", "Unknown"))
+    offices = sorted(offices)
     return render(request, "admin_offices.html", {"offices": offices})
 
 
@@ -347,6 +464,14 @@ def admin_employees(request, office):
     """
     Show unique employee names for a given office.
     """
+    employees = set()
+
+    office_dir = DATASETS / office
+    if office_dir.exists() and office_dir.is_dir():
+        for employee_dir in office_dir.iterdir():
+            if employee_dir.is_dir():
+                employees.add(employee_dir.name)
+
     logs = []
     if ATTENDANCE_CSV.exists():
         with open(ATTENDANCE_CSV, newline='', encoding='utf-8') as f:
@@ -358,7 +483,11 @@ def admin_employees(request, office):
                 if row.get("office", "Unknown") == office:
                     logs.append(row)
 
-    employees = sorted({r.get("name", "") for r in logs if r.get("name")})
+    for row in logs:
+        name = row.get("name", "")
+        if name:
+            employees.add(name)
+    employees = sorted(employees)
     return render(request, "admin_employees.html", {"office": office, "employees": employees})
 
 
@@ -367,7 +496,7 @@ def admin_employee_logs(request, office, employee):
     Show logs for a specific office+employee, with optional date filter.
     Defensive: uses .get and setdefault to avoid KeyError on missing columns.
     """
-    logs = []
+    all_logs = []
     date_filter = request.GET.get("date", "") or datetime.now().strftime("%Y-%m-%d")
 
     if ATTENDANCE_CSV.exists():
@@ -385,21 +514,25 @@ def admin_employee_logs(request, office, employee):
                 if row.get("office", "Unknown") != office or row.get("name", "") != employee:
                     continue
 
-                # filter to the selected date (defaults to today) using YYYY-MM-DD prefix
-                ts = row.get("timestamp", "")
-                if not ts or not ts.startswith(date_filter):
-                    continue
+                all_logs.append(row)
 
-                logs.append(row)
+    # filter to the selected date (defaults to today) using YYYY-MM-DD prefix
+    logs = []
+    for row in all_logs:
+        ts = row.get("timestamp", "")
+        if ts and ts.startswith(date_filter):
+            logs.append(row)
 
     status = analyze_daily_status(logs)
+    late_days = _collect_late_days(all_logs)
 
     return render(request, "admin_employee_logs.html", {
         "office": office,
         "employee": employee,
         "logs": logs,
         "date_filter": date_filter,
-        "status": status
+        "status": status,
+        "late_days": late_days
     })
 
 
@@ -428,6 +561,42 @@ def analyze_daily_status(logs):
         return "Late"
 
     return "On Time"
+
+
+def _collect_late_days(rows):
+    """
+    Build a summary of dates where the first log was after 8:00 AM.
+    """
+    first_by_date = {}
+
+    for row in rows:
+        ts = row.get("timestamp", "")
+        try:
+            dt = datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            continue
+
+        date_key = dt.strftime("%Y-%m-%d")
+        current = first_by_date.get(date_key)
+        if not current or dt < current["dt"]:
+            first_by_date[date_key] = {
+                "dt": dt,
+                "period": row.get("period", ""),
+                "confidence": row.get("confidence", "")
+            }
+
+    late_days = []
+    for date_key, info in first_by_date.items():
+        if info["dt"].time() > dtime(8, 0):
+            late_days.append({
+                "date": date_key,
+                "time": info["dt"].strftime("%H:%M:%S"),
+                "period": info.get("period", ""),
+                "confidence": info.get("confidence", "")
+            })
+
+    late_days.sort(key=lambda r: r["date"], reverse=True)
+    return late_days
 
 
 # ---------------------- API helpers -----------------------------------------

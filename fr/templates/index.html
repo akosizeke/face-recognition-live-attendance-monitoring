@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 {% load static %}
 <html lang="en">
 <head>
@@ -28,7 +28,8 @@
       background: radial-gradient(circle at 12% 18%, #f5f7fb, #e7edf8 52%, #e1e7f3 100%);
       color: var(--ink);
       font-family: 'Manrope', 'Segoe UI', sans-serif;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
     .layout {
       display: grid;
@@ -45,7 +46,7 @@
       border-right: 1px solid var(--stroke);
       padding: 18px 20px;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
       transition: transform var(--sidebar-transition), opacity 0.25s ease;
       box-shadow: 10px 0 32px rgba(15, 23, 42, 0.08);
       z-index: 15;
@@ -66,14 +67,14 @@
       margin-bottom: 10px;
     }
     .gov-logo {
-      width: 52px;
-      height: 52px;
+      width: 72px;
+      height: 72px;
       object-fit: contain;
-      border-radius: 10px;
-      background: #f8fafc;
-      border: 1px solid var(--stroke);
-      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
-      padding: 6px;
+      border-radius: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
     }
     .sidebar__header .eyebrow {
       font-size: 11px;
@@ -95,7 +96,7 @@
       line-height: 1.4;
     }
     .sidebar__scroll {
-      overflow-y: auto;
+      overflow: visible;
       height: calc(100vh - 90px);
       padding-right: 6px;
     }
@@ -111,6 +112,46 @@
       font-size: 13px;
       display: block;
       margin-bottom: 6px;
+    }
+    .tip {
+      position: relative;
+    }
+    .tip::after, .tip::before {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease, transform 0.16s ease;
+      z-index: 200;
+    }
+    .tip::after {
+      content: attr(data-tip);
+      bottom: calc(100% + 12px);
+      left: 50%;
+      transform: translate(-50%, 6px);
+      background: #0f172a;
+      color: #fff;
+      padding: 9px 12px;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.24);
+      max-width: 240px;
+      white-space: normal;
+      line-height: 1.35;
+    }
+    .tip::before {
+      content: "";
+      bottom: calc(100% + 2px);
+      left: 50%;
+      transform: translate(-50%, 8px);
+      border: 7px solid transparent;
+      border-bottom-color: #0f172a;
+    }
+    .tip:hover::after, .tip:focus-within::after,
+    .tip:hover::before, .tip:focus-within::before {
+      opacity: 1;
+      transform: translate(-50%, 0);
     }
     input, select {
       width: 100%;
@@ -181,7 +222,7 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
-      overflow: hidden;
+      overflow: auto;
     }
     .topbar {
       display: flex;
@@ -208,14 +249,14 @@
       flex-wrap: wrap;
     }
     .hero-logo {
-      width: 72px;
-      height: 72px;
+      width: 96px;
+      height: 96px;
       object-fit: contain;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid var(--stroke);
-      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
-      padding: 8px;
+      border-radius: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 0;
     }
     .fs-btn {
       border: 1px solid var(--stroke);
@@ -239,12 +280,20 @@
     .badge {
       padding: 8px 12px;
       border-radius: 999px;
-      background: #e8fff1;
-      color: #16a34a;
       font-weight: 700;
       font-size: 13px;
       letter-spacing: 0.2px;
-      border: 1px solid #c0f3d4;
+      border: 1px solid transparent;
+    }
+    .badge.live-active {
+      background: #e8fff1;
+      color: #15803d;
+      border-color: #c0f3d4;
+    }
+    .badge.live-idle {
+      background: #fff7ed;
+      color: #b45309;
+      border-color: #fdba74;
     }
     .top-actions {
       display: flex;
@@ -253,17 +302,17 @@
     }
     .stage {
       flex: 1;
-      min-height: 480px;
+      min-height: 420px;
       position: relative;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
     }
     #videoWrap {
       position: relative;
-      width: 100%;
-      max-width: 1220px;
-      height: calc(100vh - 220px);
+      width: min(1220px, 100%);
+      aspect-ratio: 16 / 9;
+      max-height: 72vh;
       min-height: 420px;
       background: #f8fafc;
       border-radius: 18px;
@@ -334,9 +383,11 @@
       }
       .main {
         padding: 16px;
+        overflow: visible;
       }
       #videoWrap {
-        height: 72vh;
+        width: 100%;
+        max-height: 64vh;
         min-height: 360px;
       }
     }
@@ -363,22 +414,28 @@
         <img class="gov-logo"
              src="{% static 'img/Official-Logo-1.png' %}"
              alt="Bulacan Seal"
-             onerror="this.onerror=null; this.src='{% static 'img/bulacan-placeholder.svg' %}';">
+             onerror='this.onerror=null; this.src="{% static "img/bulacan-placeholder.svg" %}";'>
         <img class="gov-logo"
              src="{% static 'img/peoples-agenda-e1636598233282.png' %}"
              alt="People's Agenda Seal"
-             onerror="this.onerror=null; this.src='{% static 'img/peoples-agenda-placeholder.svg' %}';">
+             onerror='this.onerror=null; this.src="{% static "img/peoples-agenda-placeholder.svg" %}";'>
       </div>
       <h2>Face Recognition System</h2>
     </div>
 
     <div class="sidebar__scroll">
       <div class="controls">
-        <div>
+        <div class="tip" data-tip="Pangalan ng empleyado na ie-enroll">
           <label for="label">Employee Name</label>
           <input id="label" placeholder="Employee Name">
         </div>
-        <div>
+        <div class="tip" data-tip="Pumili ng camera (auto detects kapag naka-plug in)">
+          <label for="cameraSelect">Camera</label>
+          <select id="cameraSelect">
+            <option value="">Default / Auto</option>
+          </select>
+        </div>
+        <div class="tip" data-tip="Pumili ng opisina o magdagdag ng bago">
           <label for="officeSelect">Office</label>
           <select id="officeSelect">
             <option value="">Select office</option>
@@ -386,27 +443,28 @@
           </select>
           <input id="officeCustom" placeholder="New office name" style="display:none; margin-top:8px;">
         </div>
-        <div>
+        <div class="tip" data-tip="Ilang larawan ang kokolektahin para sa training">
           <label for="count">Samples</label>
           <input id="count" type="number" value="5" min="1" max="20">
         </div>
-        <div>
+        <div class="tip" data-tip="Mas mababa = mas aggressive sa match; default 80">
           <label for="threshold">Threshold</label>
           <input id="threshold" type="number" value="80">
         </div>
       </div>
 
       <div class="actions">
-        <button id="autoEnrollBtn" class="btn primary">Auto-Enroll</button>
-        <button id="trainBtn" class="btn success">Train Model</button>
-        <button id="toggleLiveBtn" class="btn live">Start Live</button>
-        <button id="downloadAttendance" class="btn warn">Download Attendance</button>
+        <button id="autoEnrollBtn" class="btn primary tip" data-tip="Kukuha ng sample shots at ise-save para sa empleyado">Auto-Enroll</button>
+        <button id="updateProfileBtn" class="btn accent tip" data-tip="Gamitin ang kasalukuyang frame bilang bagong profile photo">Update Profile</button>
+        <button id="trainBtn" class="btn success tip" data-tip="I-retrain ang model gamit ang pinakabagong samples">Train Model</button>
+        <button id="toggleLiveBtn" class="btn live tip" data-tip="Simulan o ihinto ang live recognition feed">Start Live</button>
+        <button id="downloadAttendance" class="btn warn tip" data-tip="I-download ang attendance CSV">Download Attendance</button>
       </div>
 
       <div class="admin-row">
-        <button onclick="window.location.href='/admin-panel/'" class="btn ghost" style="width:auto;">
+        <a href="/admin-panel/" target="_blank" rel="noopener" class="btn ghost tip" data-tip="Buksan ang admin view para sa offices, employees, at logs" style="width:auto; display:inline-flex; align-items:center; justify-content:center;">
           Open Admin Panel
-        </button>
+        </a>
       </div>
 
       <div id="log" class="log">Ready.</div>
@@ -425,14 +483,14 @@
           <img class="hero-logo"
                src="{% static 'img/Official-Logo-1.png' %}"
                alt="Bulacan Seal"
-               onerror="this.onerror=null; this.src='{% static 'img/bulacan-placeholder.svg' %}';">
+               onerror='this.onerror=null; this.src="{% static "img/bulacan-placeholder.svg" %}";'>
           <img class="hero-logo"
                src="{% static 'img/peoples-agenda-e1636598233282.png' %}"
                alt="People's Agenda Seal"
-               onerror="this.onerror=null; this.src='{% static 'img/peoples-agenda-placeholder.svg' %}';">
+               onerror='this.onerror=null; this.src="{% static "img/peoples-agenda-placeholder.svg" %}";'>
         </div>
         <button id="fullscreenBtn" class="fs-btn" type="button">Fullscreen</button>
-        <span class="badge">Live</span>
+        <span id="liveIndicator" class="badge live-idle">Stopped</span>
       </div>
     </div>
 
@@ -454,17 +512,23 @@
 const cam = document.getElementById('cam');
 const overlay = document.getElementById('overlay');
 const logEl = document.getElementById('log');
+const cameraSelect = document.getElementById('cameraSelect');
 const officeSelect = document.getElementById('officeSelect');
 const officeCustom = document.getElementById('officeCustom');
 const officeMenu = document.getElementById('officeMenu');
 const deleteOfficeAction = document.getElementById('deleteOfficeAction');
 const renameOfficeAction = document.getElementById('renameOfficeAction');
+const updateProfileBtn = document.getElementById('updateProfileBtn');
 const sidebar = document.getElementById('sidebar');
 const fullscreenBtn = document.getElementById('fullscreenBtn');
+const liveIndicator = document.getElementById('liveIndicator');
 let hoverSidebar = false;
 let collapseTimer = null;
 let liveInterval = null;
 let busy = false;
+let liveActive = false;
+let camReady = false;
+let camStream = null;
 
 function setSidebar(open) {
   const isCollapsed = document.body.classList.contains('sidebar-collapsed');
@@ -532,10 +596,18 @@ document.addEventListener('fullscreenchange', () => {
 });
 
 async function startCamera(){
+  if (camStream) {
+    camStream.getTracks().forEach(t => t.stop());
+    camStream = null;
+  }
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({video:true});
-    cam.srcObject = stream;
+    const deviceId = (cameraSelect.value || "").trim();
+    const constraints = deviceId ? { video: { deviceId: { exact: deviceId } } } : { video: true };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    camStream = stream;
+    cam.srcObject = camStream;
     await cam.play();
+    camReady = true;
     syncOverlay();
   } catch (e) {
     log('Camera error: ' + e);
@@ -551,8 +623,41 @@ function syncOverlay() {
   overlay.style.height = rect.height + "px";
 }
 
-cam.addEventListener('loadedmetadata', syncOverlay);
+cam.addEventListener('loadedmetadata', () => {
+  camReady = true;
+  syncOverlay();
+});
 window.addEventListener('resize', syncOverlay);
+
+async function loadCameras() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videos = devices.filter(d => d.kind === "videoinput");
+    const current = cameraSelect.value || localStorage.getItem("selectedCameraId") || "";
+    cameraSelect.innerHTML = '<option value="">Default / Auto</option>';
+    videos.forEach(d => {
+      const opt = document.createElement("option");
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `Camera ${cameraSelect.length}`;
+      cameraSelect.appendChild(opt);
+    });
+    if (current && [...cameraSelect.options].some(o => o.value === current)) {
+      cameraSelect.value = current;
+    }
+  } catch (err) {
+    console.warn("Unable to enumerate cameras", err);
+  }
+}
+
+cameraSelect.addEventListener("change", () => {
+  localStorage.setItem("selectedCameraId", cameraSelect.value);
+  startCamera();
+});
+
+if (navigator.mediaDevices) {
+  navigator.mediaDevices.addEventListener("devicechange", loadCameras);
+}
 
 function log(msg){
   logEl.textContent = typeof msg === "string" ? msg : JSON.stringify(msg,null,2);
@@ -618,17 +723,28 @@ function resolveOfficeValue() {
 }
 
 function snapshot(){
+  const width = cam.videoWidth || cam.offsetWidth;
+  const height = cam.videoHeight || cam.offsetHeight;
+  if (!camReady || !width || !height) return null;
   const c = document.createElement('canvas');
-  c.width = cam.videoWidth || cam.offsetWidth;
-  c.height = cam.videoHeight || cam.offsetHeight;
-  c.getContext('2d').drawImage(cam,0,0,c.width,c.height);
+  c.width = width;
+  c.height = height;
+  c.getContext('2d').drawImage(cam,0,0,width,height);
   return c.toDataURL("image/jpeg");
+}
+
+function getCsrfToken(){
+  const cookie = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('csrftoken='));
+  return cookie ? decodeURIComponent(cookie.split('=')[1]) : '';
 }
 
 async function postJSON(url, data){
   const res = await fetch(url, {
     method: "POST",
-    headers: {"Content-Type":"application/json"},
+    headers: {
+      "Content-Type":"application/json",
+      "X-CSRFToken": getCsrfToken()
+    },
     body: JSON.stringify(data)
   });
   return res.json();
@@ -647,14 +763,38 @@ document.getElementById('autoEnrollBtn').addEventListener('click', async () => {
   const count = parseInt(document.getElementById('count').value || 5, 10);
   if (!label) return alert("Enter name");
   if (!office) return alert("Enter office");
+  if (!camReady) return alert("Camera not ready yet. Please wait a moment.");
 
   for (let i=0;i<count;i++){
     const img = snapshot();
+    if (!img) {
+      log("Camera not ready to capture images yet.");
+      break;
+    }
     const res = await postJSON("/enroll/", {label, office, image: img});
     log(`Saved ${i+1}/${count}: ${JSON.stringify(res)}`);
     await new Promise(r=>setTimeout(r,500));
   }
   log("Auto enroll done - train model next!");
+  loadOffices();
+});
+
+updateProfileBtn.addEventListener('click', async () => {
+  const label = document.getElementById('label').value.trim();
+  const office = resolveOfficeValue();
+  if (!label) return alert("Enter name");
+  if (!office) return alert("Enter office");
+  if (!camReady) return alert("Camera not ready yet. Please wait a moment.");
+
+  const img = snapshot();
+  if (!img) return alert("Camera not ready to capture images yet.");
+
+  const res = await postJSON("/profile/update/", { label, office, image: img });
+  if (!res || !res.ok) {
+    log(res && res.error ? res.error : "Unable to update profile.");
+    return;
+  }
+  log(`Profile updated: ${res.saved}`);
   loadOffices();
 });
 
@@ -667,7 +807,10 @@ deleteOfficeAction.addEventListener('click', async () => {
   try {
     const res = await fetch("/offices/delete/", {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
+      headers: {
+        "Content-Type":"application/json",
+        "X-CSRFToken": getCsrfToken()
+      },
       body: JSON.stringify({ office })
     });
     const data = await res.json();
@@ -697,7 +840,10 @@ renameOfficeAction.addEventListener('click', async () => {
   try {
     const res = await fetch("/offices/rename/", {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
+      headers: {
+        "Content-Type":"application/json",
+        "X-CSRFToken": getCsrfToken()
+      },
       body: JSON.stringify({ old: office, new: newName })
     });
     const data = await res.json();
@@ -731,8 +877,11 @@ document.getElementById('toggleLiveBtn').addEventListener('click', () => {
 });
 
 function startLive(){
+  if (liveInterval) return;
   document.getElementById('toggleLiveBtn').textContent = "Stop Live";
   liveInterval = setInterval(liveTick, 800);
+  liveActive = true;
+  syncLiveIndicator();
 }
 
 function stopLive(){
@@ -740,18 +889,31 @@ function stopLive(){
   liveInterval = null;
   document.getElementById('toggleLiveBtn').textContent = "Start Live";
   clearOverlay();
+  liveActive = false;
+  syncLiveIndicator();
 }
 
 async function liveTick(){
   if (busy) return;
   busy = true;
-  const img = snapshot();
-  const res = await postJSON("/recognize/", {
-    image: img,
-    threshold: getThresholdValue()
-  });
-  drawResults(res.results || []);
-  busy = false;
+  try {
+    const img = snapshot();
+    if (!img) {
+      log("Camera not ready for live feed yet.");
+      return;
+    }
+    const res = await postJSON("/recognize/", {
+      image: img,
+      threshold: getThresholdValue()
+    });
+    drawResults(res.results || []);
+  } catch (e) {
+    console.error("Live tick failed", e);
+    log("Live error: " + (e && e.message ? e.message : e));
+    clearOverlay();
+  } finally {
+    busy = false;
+  }
 }
 
 function clearOverlay(){
@@ -779,11 +941,30 @@ function drawResults(results){
   });
 }
 
+function syncLiveIndicator() {
+  if (!liveIndicator) return;
+  const isLive = !!liveInterval;
+  liveIndicator.textContent = isLive ? "Live" : "Stopped";
+  liveIndicator.classList.toggle('live-active', isLive);
+  liveIndicator.classList.toggle('live-idle', !isLive);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && liveActive && !liveInterval) {
+    startLive();
+  }
+  syncLiveIndicator();
+});
+
 setSidebar(false);
 syncFsButton();
-startCamera();
+loadCameras().then(startCamera);
 loadOffices();
+syncLiveIndicator();
 </script>
 
 </body>
 </html>
+
+
+

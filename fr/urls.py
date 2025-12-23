@@ -10,6 +10,8 @@ urlpatterns = [
     path("offices/", views.list_offices),
     path("offices/delete/", views.delete_office),
     path("offices/rename/", views.rename_office),
+    path("profile/update/", views.update_profile),
+    path("profile/<str:office>/<str:employee>/", views.profile_image),
 
     # NEW ADMIN SYSTEM
     path("admin-panel/", views.admin_offices, name="admin_offices"),

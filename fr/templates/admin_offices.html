@@ -120,6 +120,38 @@
             color: var(--muted);
             background: #f9fbff;
         }
+        .live-preview {
+            position: fixed;
+            bottom: 18px;
+            right: 18px;
+            width: 260px;
+            height: 150px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 14px 40px rgba(0,0,0,0.18);
+            border: 1px solid var(--stroke);
+            z-index: 400;
+            resize: both;
+        }
+        .live-preview header {
+            position: absolute;
+            top: 6px;
+            left: 8px;
+            padding: 4px 8px;
+            background: rgba(0,0,0,0.55);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: move;
+            user-select: none;
+        }
+        .live-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
     </style>
 </head>
 <body>
@@ -151,6 +183,173 @@
         {% endif %}
     </div>
 </div>
+
+<div class="live-preview" aria-hidden="true" id="livePreview">
+    <header id="livePreviewHandle">Live camera</header>
+    <video id="adminCamPreview" autoplay muted playsinline></video>
+</div>
+
+<script>
+const adminCamPreview = document.getElementById("adminCamPreview");
+const livePreview = document.getElementById("livePreview");
+const livePreviewHandle = document.getElementById("livePreviewHandle");
+let adminCamStream = null;
+const PREVIEW_STATE_KEY = "adminLivePreviewState";
+const DEFAULT_PREVIEW_STATE = {
+    width: "260px",
+    height: "150px",
+    right: "18px",
+    bottom: "18px"
+};
+
+function loadPreviewState() {
+    try {
+        const raw = localStorage.getItem(PREVIEW_STATE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+    } catch (_) {
+        return null;
+    }
+}
+
+function savePreviewState(state) {
+    try {
+        localStorage.setItem(PREVIEW_STATE_KEY, JSON.stringify(state));
+    } catch (_) {}
+}
+
+function applyPreviewState() {
+    const state = loadPreviewState() || DEFAULT_PREVIEW_STATE;
+    livePreview.style.width = state.width || DEFAULT_PREVIEW_STATE.width;
+    livePreview.style.height = state.height || DEFAULT_PREVIEW_STATE.height;
+
+    if (state.left !== undefined && state.top !== undefined) {
+        livePreview.style.left = state.left;
+        livePreview.style.top = state.top;
+        livePreview.style.right = "auto";
+        livePreview.style.bottom = "auto";
+    } else {
+        livePreview.style.right = state.right || DEFAULT_PREVIEW_STATE.right;
+        livePreview.style.bottom = state.bottom || DEFAULT_PREVIEW_STATE.bottom;
+        livePreview.style.left = "auto";
+        livePreview.style.top = "auto";
+    }
+
+    clampPreviewWithinViewport();
+}
+
+async function startAdminPreview() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    if (adminCamStream) {
+        adminCamStream.getTracks().forEach(t => t.stop());
+        adminCamStream = null;
+    }
+    const stored = localStorage.getItem("selectedCameraId") || "";
+    const constraints = stored ? { video: { deviceId: { exact: stored } } } : { video: true };
+    try {
+        adminCamStream = await navigator.mediaDevices.getUserMedia(constraints);
+        adminCamPreview.srcObject = adminCamStream;
+        await adminCamPreview.play();
+    } catch (e) {
+        console.warn("Admin preview camera error", e);
+    }
+}
+
+startAdminPreview();
+if (navigator.mediaDevices) {
+    navigator.mediaDevices.addEventListener("devicechange", startAdminPreview);
+}
+
+// Dragging logic
+let dragActive = false;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+
+livePreviewHandle.addEventListener("mousedown", (e) => {
+    dragActive = true;
+    const rect = livePreview.getBoundingClientRect();
+    dragOffsetX = e.clientX - rect.left;
+    dragOffsetY = e.clientY - rect.top;
+    document.body.style.userSelect = "none";
+});
+
+window.addEventListener("mousemove", (e) => {
+    if (!dragActive) return;
+    const x = e.clientX - dragOffsetX;
+    const y = e.clientY - dragOffsetY;
+    livePreview.style.left = `${x}px`;
+    livePreview.style.top = `${y}px`;
+    livePreview.style.right = "auto";
+    livePreview.style.bottom = "auto";
+});
+
+window.addEventListener("mouseup", () => {
+    if (!dragActive) return;
+    dragActive = false;
+    document.body.style.userSelect = "";
+    savePreviewState({
+        left: livePreview.style.left,
+        top: livePreview.style.top,
+        width: livePreview.style.width,
+        height: livePreview.style.height
+    });
+});
+
+// Persist size changes when user stops resizing
+livePreview.addEventListener("mouseup", () => {
+    clampPreviewWithinViewport();
+    savePreviewState({
+        left: livePreview.style.left,
+        top: livePreview.style.top,
+        width: livePreview.style.width,
+        height: livePreview.style.height
+    });
+});
+
+// Reset to default on double click
+livePreviewHandle.addEventListener("dblclick", () => {
+    livePreview.style.right = DEFAULT_PREVIEW_STATE.right;
+    livePreview.style.bottom = DEFAULT_PREVIEW_STATE.bottom;
+    livePreview.style.left = "auto";
+    livePreview.style.top = "auto";
+    livePreview.style.width = DEFAULT_PREVIEW_STATE.width;
+    livePreview.style.height = DEFAULT_PREVIEW_STATE.height;
+    clampPreviewWithinViewport();
+    savePreviewState({
+        right: livePreview.style.right,
+        bottom: livePreview.style.bottom,
+        width: livePreview.style.width,
+        height: livePreview.style.height
+    });
+});
+
+function clampPreviewWithinViewport() {
+    const rect = livePreview.getBoundingClientRect();
+    let left = rect.left;
+    let top = rect.top;
+    let width = rect.width;
+    let height = rect.height;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    if (width > vw) width = vw - 20;
+    if (height > vh) height = vh - 20;
+
+    if (left + width > vw) left = vw - width - 10;
+    if (top + height > vh) top = vh - height - 10;
+    if (left < 0) left = 10;
+    if (top < 0) top = 10;
+
+    livePreview.style.left = `${left}px`;
+    livePreview.style.top = `${top}px`;
+    livePreview.style.right = "auto";
+    livePreview.style.bottom = "auto";
+}
+
+window.addEventListener("resize", clampPreviewWithinViewport);
+
+applyPreviewState();
+</script>
 
 </body>
 </html>
