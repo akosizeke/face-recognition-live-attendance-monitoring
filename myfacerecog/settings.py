@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -25,8 +26,14 @@ SECRET_KEY = 'django-insecure-s3*)n8s6a0t7)l!39kx!yn-o6xvfv+@i8wu58d^)-194fvom_u
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# Allow local dev and Render hostname(s)
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", ".onrender.com"]
+# Allow local dev and Render hostname(s); ALLOWED_HOSTS env var can override (comma-separated)
+_env_hosts = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
+ALLOWED_HOSTS = _env_hosts or [
+    "localhost",
+    "127.0.0.1",
+    ".onrender.com",
+    "face-recognition-live-attendance.onrender.com",
+]
 
 
 # Application definition
